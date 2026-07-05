@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Sign in — AI Outbound Agent" }] }),
   component: AuthPage,
 });
