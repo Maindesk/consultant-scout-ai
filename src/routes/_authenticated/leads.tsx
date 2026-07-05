@@ -116,7 +116,7 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
           <>
             <SheetHeader>
               <SheetTitle>{data.lead.business_name || data.lead.domain}</SheetTitle>
-              <a href={data.lead.website} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:underline flex items-center gap-1">
+              <a href={data.lead.website ?? "#"} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:underline flex items-center gap-1">
                 {data.lead.website} <ExternalLink className="w-3 h-3" />
               </a>
             </SheetHeader>
