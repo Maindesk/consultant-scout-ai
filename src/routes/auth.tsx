@@ -40,7 +40,7 @@ function AuthPage() {
     const { data: sub } = authClient.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === "INITIAL_SESSION") setAuthReady(true);
-      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+      if (session && event === "INITIAL_SESSION") {
         goToDashboard();
       }
     });
