@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { authClient } from "@/lib/auth-client";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,13 +29,13 @@ function AuthPage() {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    authClient.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setAuthReady(true);
       if (data.session) goToDashboard();
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: sub } = authClient.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
       if (event === "INITIAL_SESSION") setAuthReady(true);
       if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
@@ -50,10 +50,10 @@ function AuthPage() {
   }, [navigate]);
 
   async function waitForVerifiedSession() {
-    const { data: sessionData } = await supabase.auth.getSession();
+    const { data: sessionData } = await authClient.auth.getSession();
     if (!sessionData.session) return false;
 
-    const { data: userData, error } = await supabase.auth.getUser();
+    const { data: userData, error } = await authClient.auth.getUser();
     if (error || !userData.user) return false;
     return true;
   }
@@ -63,7 +63,7 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await authClient.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: `${window.location.origin}/auth` },
@@ -75,7 +75,7 @@ function AuthPage() {
           return;
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await authClient.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
 
@@ -101,6 +101,11 @@ function AuthPage() {
 
       if (res.redirected) return;
       if (res.error) throw res.error;
+
+      if (res.tokens) {
+        const { error } = await authClient.auth.setSession(res.tokens);
+        if (error) throw error;
+      }
 
       if (await waitForVerifiedSession()) {
         goToDashboard();
