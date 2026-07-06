@@ -19,6 +19,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBusinessRouteImport } from './routes/_authenticated/business'
 import { Route as AuthenticatedApprovalRouteImport } from './routes/_authenticated/approval'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
+import { Route as ApiPublicCronSendOutboundRouteImport } from './routes/api/public/cron.send-outbound'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -69,6 +70,12 @@ const AuthenticatedAnalyticsRoute = AuthenticatedAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicCronSendOutboundRoute =
+  ApiPublicCronSendOutboundRouteImport.update({
+    id: '/api/public/cron/send-outbound',
+    path: '/api/public/cron/send-outbound',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof AuthenticatedInboxRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/targeting': typeof AuthenticatedTargetingRoute
+  '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -91,6 +99,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof AuthenticatedInboxRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/targeting': typeof AuthenticatedTargetingRoute
+  '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -104,6 +113,7 @@ export interface FileRoutesById {
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/targeting': typeof AuthenticatedTargetingRoute
+  '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/leads'
     | '/targeting'
+    | '/api/public/cron/send-outbound'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/leads'
     | '/targeting'
+    | '/api/public/cron/send-outbound'
   id:
     | '__root__'
     | '/'
@@ -140,12 +152,14 @@ export interface FileRouteTypes {
     | '/_authenticated/inbox'
     | '/_authenticated/leads'
     | '/_authenticated/targeting'
+    | '/api/public/cron/send-outbound'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicCronSendOutboundRoute: typeof ApiPublicCronSendOutboundRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -220,6 +234,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAnalyticsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/cron/send-outbound': {
+      id: '/api/public/cron/send-outbound'
+      path: '/api/public/cron/send-outbound'
+      fullPath: '/api/public/cron/send-outbound'
+      preLoaderRoute: typeof ApiPublicCronSendOutboundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -250,6 +271,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicCronSendOutboundRoute: ApiPublicCronSendOutboundRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
