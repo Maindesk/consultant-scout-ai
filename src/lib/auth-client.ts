@@ -1,9 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const cloudAuthUrl = import.meta.env.VITE_SUPABASE_URL;
-const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+const cloudAuthUrl = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || process.env.SUPABASE_PROJECT_ID;
 
 function getManagedStorageKey() {
   try {
