@@ -169,8 +169,11 @@ export type Database = {
           classification: string | null
           from_email: string | null
           id: string
+          in_reply_to_send_id: string | null
           lead_id: string | null
           received_at: string
+          reply_sent_at: string | null
+          reply_status: string
           subject: string | null
           suggested_reply: string | null
           user_id: string
@@ -180,8 +183,11 @@ export type Database = {
           classification?: string | null
           from_email?: string | null
           id?: string
+          in_reply_to_send_id?: string | null
           lead_id?: string | null
           received_at?: string
+          reply_sent_at?: string | null
+          reply_status?: string
           subject?: string | null
           suggested_reply?: string | null
           user_id: string
@@ -191,13 +197,23 @@ export type Database = {
           classification?: string | null
           from_email?: string | null
           id?: string
+          in_reply_to_send_id?: string | null
           lead_id?: string | null
           received_at?: string
+          reply_sent_at?: string | null
+          reply_status?: string
           subject?: string | null
           suggested_reply?: string | null
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inbound_messages_in_reply_to_send_id_fkey"
+            columns: ["in_reply_to_send_id"]
+            isOneToOne: false
+            referencedRelation: "email_sends"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inbound_messages_lead_id_fkey"
             columns: ["lead_id"]
@@ -325,6 +341,7 @@ export type Database = {
           last_error: string | null
           lead_id: string
           scheduled_at: string
+          sent_at: string | null
           status: string
           user_id: string
         }
@@ -336,6 +353,7 @@ export type Database = {
           last_error?: string | null
           lead_id: string
           scheduled_at?: string
+          sent_at?: string | null
           status?: string
           user_id: string
         }
@@ -347,6 +365,7 @@ export type Database = {
           last_error?: string | null
           lead_id?: string
           scheduled_at?: string
+          sent_at?: string | null
           status?: string
           user_id?: string
         }
