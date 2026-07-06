@@ -20,11 +20,12 @@ export const createSearchConfig = createServerFn({ method: "POST" })
     niches: string[];
     locations: string[];
     keywords: string[];
+    tech_stack?: string[];
   }) => d)
   .handler(async ({ context, data }) => {
     const { data: row, error } = await context.supabase
       .from("search_configs")
-      .insert({ ...data, user_id: context.userId })
+      .insert({ ...data, tech_stack: data.tech_stack ?? [], user_id: context.userId })
       .select()
       .single();
     if (error) throw error;

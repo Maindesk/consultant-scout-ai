@@ -11,12 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Trash2, Search } from "lucide-react";
+import { KNOWN_PLATFORMS } from "@/lib/platforms";
 
 export const Route = createFileRoute("/_authenticated/targeting")({
   component: Targeting,
 });
 
 const NICHE_SUGGESTIONS = ["business coach", "life coach", "fitness coach", "executive coach", "marketing consultant", "operations consultant"];
+const PLATFORMS = [...KNOWN_PLATFORMS];
 
 function Targeting() {
   const qc = useQueryClient();
@@ -34,12 +36,13 @@ function Targeting() {
   const [locationInput, setLocationInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
+  const [techStack, setTechStack] = useState<string[]>([]);
 
   const createMut = useMutation({
-    mutationFn: () => create({ data: { name, niches, locations, keywords } }),
+    mutationFn: () => create({ data: { name, niches, locations, keywords, tech_stack: techStack } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["search_configs"] });
-      setName(""); setNiches([]); setLocations([]); setKeywords([]);
+      setName(""); setNiches([]); setLocations([]); setKeywords([]); setTechStack([]);
       toast.success("Config created");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
@@ -66,6 +69,10 @@ function Targeting() {
     setInput("");
   }
 
+  function togglePlatform(p: string) {
+    setTechStack((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
+  }
+
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-6">
       <div>
@@ -78,7 +85,7 @@ function Targeting() {
         <CardContent className="space-y-4">
           <div>
             <Label>Name</Label>
-            <Input placeholder="e.g. US business coaches" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input placeholder="e.g. US business coaches on Squarespace" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
           <ChipInput
@@ -107,6 +114,29 @@ function Targeting() {
             onRemove={(v) => setKeywords(keywords.filter((x) => x !== v))}
           />
 
+          <div>
+            <Label>Website platform (optional)</Label>
+            <p className="text-xs text-muted-foreground mb-2">
+              Only keep leads whose site is built on one of these. Detected during enrichment.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {PLATFORMS.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => togglePlatform(p)}
+                  className={`text-xs px-2.5 py-1 rounded border transition ${
+                    techStack.includes(p)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-input hover:bg-accent"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <Button onClick={() => createMut.mutate()} disabled={!name || niches.length === 0 || createMut.isPending}>
             Save config
           </Button>
@@ -123,7 +153,10 @@ function Targeting() {
                 <div className="font-medium">{c.name}</div>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {c.niches.map((n: string) => <Badge key={n} variant="secondary">{n}</Badge>)}
-                  {c.locations.map((n: string) => <Badge key={n} variant="outline">{n}</Badge>)}
+                  {c.locations.map((n: string) => <Badge key={"l-" + n} variant="outline">{n}</Badge>)}
+                  {(c.tech_stack ?? []).map((n: string) => (
+                    <Badge key={"t-" + n} className="bg-blue-100 text-blue-800 border border-blue-300">{n}</Badge>
+                  ))}
                 </div>
               </div>
               <div className="flex gap-2">

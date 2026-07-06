@@ -21,6 +21,7 @@ import { Route as AuthenticatedApprovalRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as ApiPublicWebhooksInboundEmailRouteImport } from './routes/api/public/webhooks.inbound-email'
 import { Route as ApiPublicCronSendOutboundRouteImport } from './routes/api/public/cron.send-outbound'
+import { Route as ApiPublicCronDailyAutopilotRouteImport } from './routes/api/public/cron.daily-autopilot'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -83,6 +84,12 @@ const ApiPublicCronSendOutboundRoute =
     path: '/api/public/cron/send-outbound',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronDailyAutopilotRoute =
+  ApiPublicCronDailyAutopilotRouteImport.update({
+    id: '/api/public/cron/daily-autopilot',
+    path: '/api/public/cron/daily-autopilot',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof AuthenticatedInboxRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/targeting': typeof AuthenticatedTargetingRoute
+  '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
   '/api/public/webhooks/inbound-email': typeof ApiPublicWebhooksInboundEmailRoute
 }
@@ -107,6 +115,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof AuthenticatedInboxRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/targeting': typeof AuthenticatedTargetingRoute
+  '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
   '/api/public/webhooks/inbound-email': typeof ApiPublicWebhooksInboundEmailRoute
 }
@@ -122,6 +131,7 @@ export interface FileRoutesById {
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/targeting': typeof AuthenticatedTargetingRoute
+  '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
   '/api/public/webhooks/inbound-email': typeof ApiPublicWebhooksInboundEmailRoute
 }
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/leads'
     | '/targeting'
+    | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
     | '/api/public/webhooks/inbound-email'
   fileRoutesByTo: FileRoutesByTo
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/leads'
     | '/targeting'
+    | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
     | '/api/public/webhooks/inbound-email'
   id:
@@ -164,6 +176,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inbox'
     | '/_authenticated/leads'
     | '/_authenticated/targeting'
+    | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
     | '/api/public/webhooks/inbound-email'
   fileRoutesById: FileRoutesById
@@ -172,6 +185,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicCronDailyAutopilotRoute: typeof ApiPublicCronDailyAutopilotRoute
   ApiPublicCronSendOutboundRoute: typeof ApiPublicCronSendOutboundRoute
   ApiPublicWebhooksInboundEmailRoute: typeof ApiPublicWebhooksInboundEmailRoute
 }
@@ -262,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronSendOutboundRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/daily-autopilot': {
+      id: '/api/public/cron/daily-autopilot'
+      path: '/api/public/cron/daily-autopilot'
+      fullPath: '/api/public/cron/daily-autopilot'
+      preLoaderRoute: typeof ApiPublicCronDailyAutopilotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -292,6 +313,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicCronDailyAutopilotRoute: ApiPublicCronDailyAutopilotRoute,
   ApiPublicCronSendOutboundRoute: ApiPublicCronSendOutboundRoute,
   ApiPublicWebhooksInboundEmailRoute: ApiPublicWebhooksInboundEmailRoute,
 }

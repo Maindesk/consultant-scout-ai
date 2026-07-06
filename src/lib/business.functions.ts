@@ -52,6 +52,71 @@ export const saveBusinessProfile = createServerFn({ method: "POST" })
     return created;
   });
 
+// --- Business knowledge sources (multiple URLs) ---
+
+export const listBusinessSources = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("business_sources")
+      .select("*")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return data ?? [];
+  });
+
+export const addBusinessSource = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { url: string; label?: string; source_type?: string }) => d)
+  .handler(async ({ context, data }) => {
+    const url = data.url.trim();
+    if (!url) throw new Error("URL required");
+    const { data: row, error } = await context.supabase
+      .from("business_sources")
+      .upsert(
+        {
+          user_id: context.userId,
+          url,
+          label: data.label ?? null,
+          source_type: data.source_type ?? "page",
+        },
+        { onConflict: "user_id,url" },
+      )
+      .select()
+      .single();
+    if (error) throw error;
+    return row;
+  });
+
+export const deleteBusinessSource = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { error } = await context.supabase
+      .from("business_sources")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+async function scrapeMarkdown(url: string): Promise<string> {
+  try {
+    const fc = getFirecrawl();
+    const res: any = await fc.scrape(url, { formats: ["markdown"], onlyMainContent: true });
+    return res?.markdown ?? "";
+  } catch (e) {
+    console.error("scrape failed", url, e);
+    return "";
+  }
+}
+
+/**
+ * Full retrain: scrapes the main site + all business_sources, then rebuilds
+ * the AI understanding stored on business_profiles.
+ */
 export const analyzeMyBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -63,26 +128,37 @@ export const analyzeMyBusiness = createServerFn({ method: "POST" })
     if (pErr) throw pErr;
     if (!profile?.website_url) throw new Error("Add your website URL first");
 
-    let scraped = "";
-    try {
-      const fc = getFirecrawl();
-      const res = await fc.scrape(profile.website_url, {
-        formats: ["markdown"],
-        onlyMainContent: true,
-      });
-      scraped = (res as { markdown?: string }).markdown ?? "";
-    } catch (e) {
-      console.error("firecrawl scrape failed", e);
+    // Scrape main site
+    const mainMd = await scrapeMarkdown(profile.website_url);
+
+    // Scrape all extra sources (and store per-source markdown)
+    const { data: sources } = await context.supabase
+      .from("business_sources")
+      .select("*")
+      .eq("user_id", context.userId);
+
+    const perSource: Array<{ url: string; label: string; markdown: string }> = [];
+    for (const s of sources ?? []) {
+      const md = await scrapeMarkdown(s.url);
+      await context.supabase
+        .from("business_sources")
+        .update({ scraped_markdown: md.slice(0, 20000), last_scraped_at: new Date().toISOString() })
+        .eq("id", s.id);
+      perSource.push({ url: s.url, label: s.label ?? s.source_type ?? "page", markdown: md });
     }
 
-    const gateway = getLovableGateway();
-    const prompt = `Analyze this coaching/consulting business and extract key details.
+    const combined = [
+      `# Main site (${profile.website_url})\n${mainMd.slice(0, 10000)}`,
+      ...perSource.map((s) => `# ${s.label} (${s.url})\n${s.markdown.slice(0, 6000)}`),
+    ].join("\n\n---\n\n");
 
-Website URL: ${profile.website_url}
+    const gateway = getLovableGateway();
+    const prompt = `You are analyzing a coaching/consulting business to build a knowledge base used to personalize cold outreach.
+
 Owner-provided offer: ${profile.offer_description ?? "(none)"}
 
-Website content (markdown):
-${scraped.slice(0, 12000) || "(no content scraped)"}
+All source content (main site + supporting pages):
+${combined.slice(0, 30000) || "(no content)"}
 `;
 
     try {

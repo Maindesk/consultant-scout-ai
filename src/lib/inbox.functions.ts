@@ -1,17 +1,135 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export const listInbox = createServerFn({ method: "GET" })
+/**
+ * Groups all conversations by lead: shows pending-review count and the
+ * latest activity per lead. The inbox UI drills into a lead for the full
+ * interleaved thread of sent + received messages.
+ */
+export const listConversations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("inbound_messages")
-      .select("*, leads(id, business_name, website, email, niche)")
-      .eq("user_id", context.userId)
-      .order("received_at", { ascending: false })
-      .limit(200);
-    if (error) throw error;
-    return data ?? [];
+    // Get every lead that has either an inbound message or a sent email
+    const [{ data: inbox }, { data: sends }] = await Promise.all([
+      context.supabase
+        .from("inbound_messages")
+        .select("id, lead_id, received_at, reply_status, classification, subject, body, from_email")
+        .eq("user_id", context.userId)
+        .order("received_at", { ascending: false }),
+      context.supabase
+        .from("email_sends")
+        .select("id, lead_id, sent_at, subject")
+        .eq("user_id", context.userId)
+        .order("sent_at", { ascending: false }),
+    ]);
+
+    const leadIds = new Set<string>();
+    for (const m of inbox ?? []) if (m.lead_id) leadIds.add(m.lead_id);
+    for (const s of sends ?? []) if (s.lead_id) leadIds.add(s.lead_id);
+    if (leadIds.size === 0) return [];
+
+    const { data: leads } = await context.supabase
+      .from("leads")
+      .select("id, business_name, website, email, niche, status")
+      .in("id", Array.from(leadIds));
+
+    const leadMap = new Map((leads ?? []).map((l) => [l.id, l]));
+
+    const conversations = Array.from(leadIds).map((lid) => {
+      const lead = leadMap.get(lid);
+      const leadInbox = (inbox ?? []).filter((m) => m.lead_id === lid);
+      const leadSends = (sends ?? []).filter((s) => s.lead_id === lid);
+      const pending = leadInbox.filter((m) => m.reply_status === "pending_review").length;
+      const lastInbound = leadInbox[0];
+      const lastSend = leadSends[0];
+      const lastActivity =
+        (lastInbound?.received_at ?? "") > (lastSend?.sent_at ?? "")
+          ? lastInbound?.received_at
+          : lastSend?.sent_at;
+      return {
+        lead_id: lid,
+        lead,
+        pending_replies: pending,
+        classification: lastInbound?.classification ?? null,
+        last_activity: lastActivity,
+        last_inbound_preview: lastInbound?.body?.slice(0, 140) ?? null,
+        last_from: lastInbound?.from_email ?? null,
+        inbound_count: leadInbox.length,
+        sent_count: leadSends.length,
+      };
+    });
+
+    conversations.sort((a, b) => {
+      if (a.pending_replies !== b.pending_replies) return b.pending_replies - a.pending_replies;
+      return (b.last_activity ?? "").localeCompare(a.last_activity ?? "");
+    });
+
+    return conversations;
+  });
+
+export const getLeadConversation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { lead_id: string }) => d)
+  .handler(async ({ context, data }) => {
+    const [{ data: lead }, { data: inbound }, { data: sends }] = await Promise.all([
+      context.supabase
+        .from("leads")
+        .select("*")
+        .eq("id", data.lead_id)
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+      context.supabase
+        .from("inbound_messages")
+        .select("*")
+        .eq("lead_id", data.lead_id)
+        .eq("user_id", context.userId)
+        .order("received_at", { ascending: true }),
+      context.supabase
+        .from("email_sends")
+        .select("*")
+        .eq("lead_id", data.lead_id)
+        .eq("user_id", context.userId)
+        .order("sent_at", { ascending: true }),
+    ]);
+
+    if (!lead) throw new Error("Lead not found");
+
+    type ThreadItem =
+      | { kind: "sent"; id: string; at: string; subject?: string | null; body?: string | null }
+      | {
+          kind: "inbound";
+          id: string;
+          at: string;
+          subject?: string | null;
+          body?: string | null;
+          from_email?: string | null;
+          classification?: string | null;
+          suggested_reply?: string | null;
+          reply_status: string;
+        };
+
+    const thread: ThreadItem[] = [
+      ...(sends ?? []).map((s): ThreadItem => ({
+        kind: "sent",
+        id: s.id,
+        at: s.sent_at,
+        subject: s.subject,
+        body: s.body,
+      })),
+      ...(inbound ?? []).map((m): ThreadItem => ({
+        kind: "inbound",
+        id: m.id,
+        at: m.received_at,
+        subject: m.subject,
+        body: m.body,
+        from_email: m.from_email,
+        classification: m.classification,
+        suggested_reply: m.suggested_reply,
+        reply_status: m.reply_status,
+      })),
+    ].sort((a, b) => a.at.localeCompare(b.at));
+
+    return { lead, thread };
   });
 
 export const updateSuggestedReply = createServerFn({ method: "POST" })

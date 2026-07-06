@@ -1,27 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getBusinessProfile, saveBusinessProfile, analyzeMyBusiness } from "@/lib/business.functions";
+import {
+  getBusinessProfile,
+  saveBusinessProfile,
+  analyzeMyBusiness,
+  listBusinessSources,
+  addBusinessSource,
+  deleteBusinessSource,
+} from "@/lib/business.functions";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Trash2, Plus, Link2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/business")({
   component: BusinessPage,
 });
+
+const SOURCE_TYPES = ["sales_page", "case_study", "testimonial", "about", "blog", "page"];
 
 function BusinessPage() {
   const qc = useQueryClient();
   const fetchProfile = useServerFn(getBusinessProfile);
   const save = useServerFn(saveBusinessProfile);
   const analyze = useServerFn(analyzeMyBusiness);
+  const listSources = useServerFn(listBusinessSources);
+  const addSource = useServerFn(addBusinessSource);
+  const delSource = useServerFn(deleteBusinessSource);
 
   const { data: profile } = useQuery({ queryKey: ["business_profile"], queryFn: () => fetchProfile() });
+  const { data: sources = [] } = useQuery({ queryKey: ["business_sources"], queryFn: () => listSources() });
 
   const [form, setForm] = useState({
     website_url: "",
@@ -30,6 +44,10 @@ function BusinessPage() {
     sender_email: "",
     daily_send_cap: 25,
   });
+
+  const [srcUrl, setSrcUrl] = useState("");
+  const [srcLabel, setSrcLabel] = useState("");
+  const [srcType, setSrcType] = useState("page");
 
   useEffect(() => {
     if (profile) {
@@ -45,20 +63,29 @@ function BusinessPage() {
 
   const saveMut = useMutation({
     mutationFn: () => save({ data: form }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["business_profile"] });
-      toast.success("Saved");
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["business_profile"] }); toast.success("Saved"); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
   const analyzeMut = useMutation({
     mutationFn: () => analyze(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["business_profile"] });
-      toast.success("AI analysis complete");
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["business_profile"] }); toast.success("AI retrained on all sources"); },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Analysis failed"),
+  });
+
+  const addSourceMut = useMutation({
+    mutationFn: () => addSource({ data: { url: srcUrl, label: srcLabel || undefined, source_type: srcType } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["business_sources"] });
+      setSrcUrl(""); setSrcLabel(""); setSrcType("page");
+      toast.success("Source added — click Retrain AI to include it");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const delSourceMut = useMutation({
+    mutationFn: (id: string) => delSource({ data: { id } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["business_sources"] }),
   });
 
   return (
@@ -98,10 +125,61 @@ function BusinessPage() {
           </div>
           <div className="flex gap-2">
             <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save</Button>
-            <Button variant="outline" onClick={() => analyzeMut.mutate()} disabled={analyzeMut.isPending || !form.website_url}>
-              {analyzeMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-              Analyze with AI
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Knowledge base</CardTitle>
+          <CardDescription>
+            Add multiple URLs (case studies, sales pages, testimonials, about). The AI reads all of them plus your main
+            site to build a deep understanding used in every cold email and reply.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_150px_auto] gap-2">
+            <Input placeholder="https://yoursite.com/case-study/acme" value={srcUrl} onChange={(e) => setSrcUrl(e.target.value)} />
+            <Input placeholder="Label (optional)" value={srcLabel} onChange={(e) => setSrcLabel(e.target.value)} />
+            <select
+              className="h-9 rounded-md border bg-background px-2 text-sm"
+              value={srcType}
+              onChange={(e) => setSrcType(e.target.value)}
+            >
+              {SOURCE_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+            </select>
+            <Button onClick={() => addSourceMut.mutate()} disabled={!srcUrl || addSourceMut.isPending}>
+              <Plus className="w-4 h-4 mr-1" /> Add
             </Button>
+          </div>
+
+          {sources.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No extra sources yet. Add pages the AI should learn from.</p>
+          ) : (
+            <div className="space-y-2">
+              {sources.map((s) => (
+                <div key={s.id} className="flex items-center gap-3 text-sm border rounded p-2">
+                  <Link2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate">{s.label || s.url}</div>
+                    <div className="text-xs text-muted-foreground truncate">{s.url}</div>
+                  </div>
+                  <Badge variant="outline">{s.source_type}</Badge>
+                  {s.last_scraped_at && <Badge variant="secondary" className="text-xs">learned</Badge>}
+                  <Button size="icon" variant="ghost" onClick={() => delSourceMut.mutate(s.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 pt-2 border-t">
+            <Button onClick={() => analyzeMut.mutate()} disabled={analyzeMut.isPending || !form.website_url}>
+              {analyzeMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              Retrain AI on all sources
+            </Button>
+            <span className="text-xs text-muted-foreground">Re-scrapes every source and rebuilds the AI understanding.</span>
           </div>
         </CardContent>
       </Card>
