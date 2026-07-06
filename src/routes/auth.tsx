@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createLovableAuth } from "@lovable.dev/cloud-auth-js";
 import { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
-import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
+
+const lovableAuth = createLovableAuth();
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -94,7 +96,7 @@ function AuthPage() {
   async function google() {
     setLoading(true);
     try {
-      const res = await lovable.auth.signInWithOAuth("google", {
+      const res = await lovableAuth.signInWithOAuth("google", {
         redirect_uri: `${window.location.origin}/auth`,
         extraParams: { prompt: "select_account" },
       });
