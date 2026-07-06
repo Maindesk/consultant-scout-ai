@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
         // Pull up to 25 due items across all users
         const { data: due, error } = await supabaseAdmin
           .from("outbound_queue")
-          .select("*, email_drafts(*), leads(*), business_profiles:user_id(*)")
+          .select("*, email_drafts(*), leads(*)")
           .eq("status", "queued")
           .lte("scheduled_at", new Date().toISOString())
           .order("scheduled_at", { ascending: true })
