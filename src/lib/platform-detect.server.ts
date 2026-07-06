@@ -2,24 +2,9 @@
  * Detect the website platform from raw HTML fingerprints.
  * Runs server-side inside enrichment / autopilot.
  */
-export const KNOWN_PLATFORMS = [
-  "Squarespace",
-  "Wix",
-  "Webflow",
-  "WordPress",
-  "Shopify",
-  "Kajabi",
-  "Teachable",
-  "Podia",
-  "Kartra",
-  "ClickFunnels",
-  "Framer",
-  "Ghost",
-  "HubSpot",
-  "Carrd",
-] as const;
+import { KNOWN_PLATFORMS, type PlatformName } from "./platforms";
 
-export type PlatformName = (typeof KNOWN_PLATFORMS)[number];
+export { KNOWN_PLATFORMS, type PlatformName };
 
 const SIGNATURES: Array<{ name: PlatformName; patterns: RegExp[] }> = [
   { name: "Squarespace", patterns: [/static\.squarespace\.com/i, /squarespace-cdn/i, /Squarespace\.SQUARESPACE_CONTEXT/i] },
