@@ -4,6 +4,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+import { detectPlatform } from "./platform-detect.server";
 
 export const listLeads = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -50,14 +51,14 @@ export const discoverLeads = createServerFn({ method: "POST" })
     const fc = getFirecrawl();
     const limit = Math.min(data.limit ?? 15, 30);
 
-    // Build queries from niches × locations
     const niches = cfg.niches.length ? cfg.niches : ["coach"];
     const locs = cfg.locations.length ? cfg.locations : [""];
     const extra = cfg.keywords.join(" ");
+    const platformHint = (cfg.tech_stack ?? [])[0] ?? "";
     const queries: string[] = [];
     for (const n of niches) {
       for (const l of locs) {
-        queries.push([n, l, extra].filter(Boolean).join(" ").trim());
+        queries.push([n, l, extra, platformHint].filter(Boolean).join(" ").trim());
       }
     }
 
@@ -84,15 +85,12 @@ export const discoverLeads = createServerFn({ method: "POST" })
       }
     }
 
-    // Dedup by domain
     const seen = new Set<string>();
     const inserted: any[] = [];
     for (const f of found) {
       const domain = extractDomain(f.url);
       if (!domain || seen.has(domain)) continue;
       seen.add(domain);
-
-      // Skip obvious platforms
       if (/^(?:facebook|instagram|linkedin|twitter|x|youtube|tiktok|yelp|reddit|medium|wikipedia|amazon|apple|google)\./.test(domain)) continue;
 
       const { data: row, error } = await context.supabase
@@ -143,14 +141,35 @@ export const enrichLead = createServerFn({ method: "POST" })
 
     const fc = getFirecrawl();
     let markdown = "";
+    let html = "";
     try {
       const res: any = await fc.scrape(lead.website, {
-        formats: ["markdown"],
-        onlyMainContent: true,
+        formats: ["markdown", "html"],
+        onlyMainContent: false,
       });
       markdown = res?.markdown ?? "";
+      html = res?.html ?? res?.rawHtml ?? "";
     } catch (e) {
       console.error("scrape failed", e);
+    }
+
+    const platform = detectPlatform(html);
+
+    // If search config had a tech_stack filter and platform doesn't match, discard
+    if (lead.search_config_id) {
+      const { data: cfg } = await context.supabase
+        .from("search_configs")
+        .select("tech_stack")
+        .eq("id", lead.search_config_id)
+        .maybeSingle();
+      const filter: string[] = cfg?.tech_stack ?? [];
+      if (filter.length > 0 && (!platform || !filter.includes(platform))) {
+        await context.supabase
+          .from("leads")
+          .update({ platform, status: "filtered_out" })
+          .eq("id", lead.id);
+        return { ok: true, filtered: true, platform };
+      }
     }
 
     const gateway = getLovableGateway();
@@ -161,6 +180,7 @@ export const enrichLead = createServerFn({ method: "POST" })
 
 URL: ${lead.website}
 Business name: ${lead.business_name ?? "unknown"}
+Detected platform: ${platform ?? "unknown"}
 
 Content:
 ${markdown.slice(0, 15000) || "(no content)"}
@@ -187,9 +207,9 @@ ${markdown.slice(0, 15000) || "(no content)"}
       .update({
         status: "enriched",
         email: output.contact_email ?? lead.email,
-        business_name: lead.business_name ?? undefined,
+        platform,
       })
       .eq("id", lead.id);
 
-    return { ok: true };
+    return { ok: true, platform };
   });
