@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_settings: {
+        Row: {
+          active_search_config_id: string | null
+          auto_draft: boolean
+          auto_enrich: boolean
+          created_at: string
+          daily_lead_target: number
+          enabled: boolean
+          id: string
+          last_run_at: string | null
+          last_run_summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_search_config_id?: string | null
+          auto_draft?: boolean
+          auto_enrich?: boolean
+          created_at?: string
+          daily_lead_target?: number
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          last_run_summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_search_config_id?: string | null
+          auto_draft?: boolean
+          auto_enrich?: boolean
+          created_at?: string
+          daily_lead_target?: number
+          enabled?: boolean
+          id?: string
+          last_run_at?: string | null
+          last_run_summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_settings_active_search_config_id_fkey"
+            columns: ["active_search_config_id"]
+            isOneToOne: false
+            referencedRelation: "search_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_profiles: {
         Row: {
           ai_summary: string | null
@@ -59,6 +109,45 @@ export type Database = {
           user_id?: string
           value_proposition?: string | null
           website_url?: string | null
+        }
+        Relationships: []
+      }
+      business_sources: {
+        Row: {
+          ai_notes: string | null
+          created_at: string
+          id: string
+          label: string | null
+          last_scraped_at: string | null
+          scraped_markdown: string | null
+          source_type: string
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          ai_notes?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          last_scraped_at?: string | null
+          scraped_markdown?: string | null
+          source_type?: string
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          ai_notes?: string | null
+          created_at?: string
+          id?: string
+          label?: string | null
+          last_scraped_at?: string | null
+          scraped_markdown?: string | null
+          source_type?: string
+          updated_at?: string
+          url?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -283,6 +372,7 @@ export type Database = {
           location: string | null
           name: string | null
           niche: string | null
+          platform: string | null
           search_config_id: string | null
           source: string | null
           status: string
@@ -299,6 +389,7 @@ export type Database = {
           location?: string | null
           name?: string | null
           niche?: string | null
+          platform?: string | null
           search_config_id?: string | null
           source?: string | null
           status?: string
@@ -315,6 +406,7 @@ export type Database = {
           location?: string | null
           name?: string | null
           niche?: string | null
+          platform?: string | null
           search_config_id?: string | null
           source?: string | null
           status?: string
@@ -390,28 +482,34 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_default: boolean
           keywords: string[]
           locations: string[]
           name: string
           niches: string[]
+          tech_stack: string[]
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_default?: boolean
           keywords?: string[]
           locations?: string[]
           name: string
           niches?: string[]
+          tech_stack?: string[]
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_default?: boolean
           keywords?: string[]
           locations?: string[]
           name?: string
           niches?: string[]
+          tech_stack?: string[]
           user_id?: string
         }
         Relationships: []
