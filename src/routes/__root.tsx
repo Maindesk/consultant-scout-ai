@@ -80,9 +80,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "AI Outbound Agent" },
       { name: "description", content: "AI agent that finds coaches & consultants, writes personalized outreach, and follows up — you approve every message." },
       { property: "og:title", content: "AI Outbound Agent" },
-      { property: "og:description", content: "AI finds, analyzes and writes to coaches & consultants. You stay in control." },
+      { property: "og:description", content: "AI agent that finds coaches & consultants, writes personalized outreach, and follows up — you approve every message." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "AI Outbound Agent" },
+      { name: "twitter:description", content: "AI agent that finds coaches & consultants, writes personalized outreach, and follows up — you approve every message." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/34da393c-14ff-471d-8691-486034aa186f/id-preview-271e6568--484a8808-43eb-48ad-85a2-3c8f896a3616.lovable.app-1783342926936.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/34da393c-14ff-471d-8691-486034aa186f/id-preview-271e6568--484a8808-43eb-48ad-85a2-3c8f896a3616.lovable.app-1783342926936.png" },
     ],
     links: [
       {
