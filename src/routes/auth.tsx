@@ -25,6 +25,12 @@ function AuthPage() {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate({ to: "/dashboard" });
     });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED")) {
+        navigate({ to: "/dashboard" });
+      }
+    });
+    return () => sub.subscription.unsubscribe();
   }, [navigate]);
 
   async function submit(e: React.FormEvent) {
@@ -53,7 +59,7 @@ function AuthPage() {
 
   async function google() {
     const res = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/auth`,
     });
     if (res.error) toast.error(res.error.message ?? "Google sign-in failed");
   }
