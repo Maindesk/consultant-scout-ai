@@ -230,7 +230,7 @@ ${md.slice(0, 15000) || "(no content)"}`,
         .update({ status: "enriched", platform, email: output.contact_email ?? lead.email })
         .eq("id", lead.id);
 
-      enrichedLeads.push({ ...lead, platform, enrichment: output });
+      enrichedLeads.push({ ...lead, platform, enrichment: output, signals });
       result.enriched += 1;
     } catch (e) {
       result.errors.push(`enrich ${lead.website}: ${String(e)}`);
