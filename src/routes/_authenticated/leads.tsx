@@ -262,8 +262,11 @@ function DemoSitePanel({ leadId }: { leadId: string }) {
   return (
     <div className="border-t pt-3 space-y-2">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Globe className="w-3.5 h-3.5" /> Personalized demo site
+        <Globe className="w-3.5 h-3.5" /> Auto-provision a white-label demo site for this lead
       </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Spin up a pre-built site on your white-label platform tailored to this prospect's business, then drop a one-click edit link into the outreach email so they can log in, tweak it, and see exactly what switching to your white-label looks like — no signup friction.
+      </p>
       {site ? (
         <div className="space-y-2">
           <div className="text-xs">
