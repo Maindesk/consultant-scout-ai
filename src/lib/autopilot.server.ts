@@ -205,6 +205,9 @@ Content:
 ${md.slice(0, 15000) || "(no content)"}`,
       });
 
+      const { analyzeWebsite } = await import("./website-signals.server");
+      const signals = await analyzeWebsite(lead.website, html);
+
       await supabaseAdmin.from("lead_enrichments").upsert(
         {
           lead_id: lead.id,
@@ -216,9 +219,11 @@ ${md.slice(0, 15000) || "(no content)"}`,
           funnel_presence: output.funnel_presence,
           pain_points: output.pain_points,
           raw_markdown: md.slice(0, 20000),
+          website_signals: signals as any,
         },
         { onConflict: "lead_id" },
       );
+
 
       await supabaseAdmin
         .from("leads")
