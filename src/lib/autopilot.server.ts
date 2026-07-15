@@ -263,7 +263,7 @@ ${md.slice(0, 15000) || "(no content)"}`,
 
   for (const lead of enrichedLeads) {
     try {
-      const { output } = await generateText({
+      const { output, usage: draftUsage } = await generateText({
         model: gateway(CHAT_MODEL),
         output: Output.object({ schema: SequenceSchema }),
         prompt: `Personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
@@ -296,12 +296,14 @@ ${goalFraming(goal)}
 - Pitch is a PLATFORM SWITCH, never one feature.
 - Email 1: name 2-3 detected 3rd-party tools, frame the stack sprawl (fragmented brand + monthly cost + slower site), position our platform as the consolidated on-brand replacement, and reference native capabilities to prove the switch is a superset.
 - Email 2: quantify drag (overlapping subs, brand inconsistency, perf hit).
-- Email 3: proof / migration-is-handled objection killer.
+- Email 3: proof / migration-is-handled objection killer. If a personalized demo edit link will be inserted, hint that a preview tailored to their brand is ready to explore (use {{DEMO_LINK}} placeholder — do NOT invent a URL).
 - Email 4: soft break-up matching goal.
 - If no tools detected, use gaps + platform limitations instead.
 - Under 130 words each. Day offsets 0, 3, 7, 14. Subject under 60 chars. CTA matches campaign goal.`,
 
       });
+      if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(draftUsage?.totalTokens ?? 0) });
+
 
       await supabaseAdmin
         .from("email_drafts")
