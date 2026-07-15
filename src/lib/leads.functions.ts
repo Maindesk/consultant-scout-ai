@@ -199,18 +199,19 @@ export const enrichLead = createServerFn({ method: "POST" })
     if (error || !lead) throw new Error("Lead not found");
     if (!lead.website) throw new Error("Lead has no website");
 
-    const fc = getFirecrawl();
+    const { deepScrapeSite } = await import("./deep-scrape.server");
     let markdown = "";
     let html = "";
+    let pagesScraped = 0;
+    let pageUrls: string[] = [];
     try {
-      const res: any = await fc.scrape(lead.website, {
-        formats: ["markdown", "html"],
-        onlyMainContent: false,
-      });
-      markdown = res?.markdown ?? "";
-      html = res?.html ?? res?.rawHtml ?? "";
+      const deep = await deepScrapeSite(lead.website);
+      markdown = deep.aggregatedMarkdown;
+      html = deep.aggregatedHtml;
+      pagesScraped = deep.pagesScraped;
+      pageUrls = deep.pages.map((p) => p.url);
     } catch (e) {
-      console.error("scrape failed", e);
+      console.error("deep scrape failed", e);
     }
 
     const detection = detectPlatformDetailed(html);
