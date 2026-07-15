@@ -23,11 +23,11 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PixelOutreach — AI outbound built for platform partners" },
+      { title: "PixelOutreach — Get more users for your white-label" },
       {
         name: "description",
         content:
-          "Turn your platform's ideal-fit prospects into signed customers. AI discovers leads on your target tech stack, personalizes every email, provisions demo sites, and closes the loop — end to end.",
+          "The AI outbound engine for white-label platform partners. Discover site owners running the stacks you replace, personalize every email, auto-provision demos, and sign up new users to your white-label — on autopilot.",
       },
     ],
   }),
