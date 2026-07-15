@@ -46,6 +46,8 @@ function BusinessPage() {
     avg_deal_value: 0,
     avg_close_rate: 0.1,
     currency: "USD",
+    product_capabilities: "",
+    default_email_goal: "book_meeting",
   });
 
   const [srcUrl, setSrcUrl] = useState("");
@@ -63,6 +65,8 @@ function BusinessPage() {
         avg_deal_value: Number(profile.avg_deal_value ?? 0),
         avg_close_rate: Number(profile.avg_close_rate ?? 0.1),
         currency: profile.currency ?? "USD",
+        product_capabilities: (profile as any).product_capabilities ?? "",
+        default_email_goal: (profile as any).default_email_goal ?? "book_meeting",
       });
     }
   }, [profile]);
@@ -128,6 +132,38 @@ function BusinessPage() {
           <div>
             <Label>Daily send cap</Label>
             <Input type="number" min={1} max={500} value={form.daily_send_cap} onChange={(e) => setForm({ ...form, daily_send_cap: Number(e.target.value) })} />
+          </div>
+          <div className="pt-2 border-t space-y-4">
+            <div>
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Product capabilities</div>
+              <p className="text-xs text-muted-foreground mb-2">
+                List features your product replaces or offers natively (e.g. "built-in booking &amp; appointments, on-brand
+                lead magnets, native live chat"). The AI will pitch these as alternatives when it detects tools like
+                Calendly, Intercom, ConvertKit on the prospect's site.
+              </p>
+              <Textarea
+                rows={4}
+                placeholder="Native booking & appointments (replaces Calendly/Acuity)&#10;On-brand email capture (replaces ConvertKit/Mailchimp)&#10;Built-in live chat (replaces Intercom/Drift)"
+                value={form.product_capabilities}
+                onChange={(e) => setForm({ ...form, product_capabilities: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Default email goal</Label>
+              <select
+                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                value={form.default_email_goal}
+                onChange={(e) => setForm({ ...form, default_email_goal: e.target.value })}
+              >
+                <option value="book_meeting">Book a meeting / discovery call</option>
+                <option value="free_trial">Start a free trial</option>
+                <option value="demo">Request a live demo</option>
+                <option value="reply">Get a reply / start conversation</option>
+                <option value="signup">Sign up / create an account</option>
+                <option value="case_study">Share case study &amp; nurture</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-1">Each goal changes how the AI frames the CTA in every email.</p>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-4 pt-2 border-t">
             <div className="col-span-3">

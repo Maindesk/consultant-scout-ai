@@ -240,6 +240,9 @@ ${md.slice(0, 15000) || "(no content)"}`,
   // 3. Draft
   if (!bp || !settings.auto_draft) return result;
 
+  const { goalFraming, EMAIL_GOAL_LABELS } = await import("./email-goals");
+  const goal = (bp as any).default_email_goal ?? "book_meeting";
+
   for (const lead of enrichedLeads) {
     try {
       const { output } = await generateText({
@@ -251,6 +254,8 @@ Sender:
 - Summary: ${bp.ai_summary ?? bp.offer_description ?? ""}
 - Value prop: ${bp.value_proposition ?? ""}
 - Ideal client: ${bp.ideal_client ?? ""}
+- Product capabilities (features WE offer natively — pitch as alternatives to prospect's embedded tools):
+${(bp as any).product_capabilities ?? "(none provided)"}
 
 Prospect:
 - Business: ${lead.business_name ?? lead.domain}
@@ -260,12 +265,15 @@ Prospect:
 - Their offer: ${lead.enrichment.offer}
 - Audience: ${lead.enrichment.target_audience}
 - Pain points: ${JSON.stringify(lead.enrichment.pain_points)}
-- Tools detected on site: ${JSON.stringify(lead.signals?.tools ?? [])}
+- Embedded 3rd-party tools on their site: ${JSON.stringify(lead.signals?.tools ?? [])}
 - Site gaps: ${JSON.stringify(lead.signals?.gaps ?? [])}
 - Perf: ${JSON.stringify(lead.signals?.performance ?? {})}
 
-4-email sequence: initial + 3 follow-ups. Tone: professional. Reference ONE specific detail — prefer a detected tool ("saw you use Calendly…") or a gap ("no lead magnet on your site"). Under 120 words each. Day offsets: 0, 3, 7, 14. Subject under 60 chars.`,
+Campaign goal: ${EMAIL_GOAL_LABELS[goal as keyof typeof EMAIL_GOAL_LABELS] ?? goal}
+${goalFraming(goal)}
 
+4-email sequence: initial + 3 follow-ups. Tone: professional.
+Email 1 MUST reference ONE detected tool on their site AND pitch our matching product capability as the native alternative (e.g. "I noticed you embed Calendly — our platform ships booking out of the box, keeping your site on-brand"). If no tool matches a capability, reference a gap. CTA in every email must match the campaign goal above. Under 120 words each. Day offsets: 0, 3, 7, 14. Subject under 60 chars.`,
       });
 
       await supabaseAdmin
