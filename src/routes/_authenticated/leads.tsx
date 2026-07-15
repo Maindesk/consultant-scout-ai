@@ -82,6 +82,7 @@ function LeadsPage() {
             <tr className="text-left">
               <th className="px-3 py-2 font-medium">Business</th>
               <th className="px-3 py-2 font-medium">Domain</th>
+              <th className="px-3 py-2 font-medium">Platform</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium text-right">Actions</th>
             </tr>
@@ -95,6 +96,7 @@ function LeadsPage() {
                   </button>
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">{l.domain}</td>
+                <td className="px-3 py-2"><ConfidenceBadge platform={l.platform} confidence={(l as any).platform_confidence} /></td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[l.status] ?? ""} variant="secondary">{l.status}</Badge></td>
                 <td className="px-3 py-2 text-right space-x-2">
                   {l.status === "new" && (
