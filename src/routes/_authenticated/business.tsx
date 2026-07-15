@@ -46,6 +46,8 @@ function BusinessPage() {
     avg_deal_value: 0,
     avg_close_rate: 0.1,
     currency: "USD",
+    product_capabilities: "",
+    default_email_goal: "book_meeting",
   });
 
   const [srcUrl, setSrcUrl] = useState("");
