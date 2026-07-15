@@ -66,6 +66,7 @@ export type Database = {
       }
       business_profiles: {
         Row: {
+          active_workspace_id: string | null
           ai_summary: string | null
           avg_close_rate: number | null
           avg_deal_value: number | null
@@ -86,6 +87,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          active_workspace_id?: string | null
           ai_summary?: string | null
           avg_close_rate?: number | null
           avg_deal_value?: number | null
@@ -106,6 +108,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          active_workspace_id?: string | null
           ai_summary?: string | null
           avg_close_rate?: number | null
           avg_deal_value?: number | null
@@ -125,7 +128,15 @@ export type Database = {
           value_proposition?: string | null
           website_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "business_profiles_active_workspace_id_fkey"
+            columns: ["active_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       business_sources: {
         Row: {
@@ -547,12 +558,93 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          id: string
+          main_site_api_key_ciphertext: string | null
+          main_site_domain: string | null
+          name: string
+          owner_id: string
+          platform_client_key_ciphertext: string | null
+          platform_wl_domain: string | null
+          slug: string
+          updated_at: string
+          webhook_secret_ciphertext: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          main_site_api_key_ciphertext?: string | null
+          main_site_domain?: string | null
+          name: string
+          owner_id: string
+          platform_client_key_ciphertext?: string | null
+          platform_wl_domain?: string | null
+          slug: string
+          updated_at?: string
+          webhook_secret_ciphertext?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          main_site_api_key_ciphertext?: string | null
+          main_site_domain?: string | null
+          name?: string
+          owner_id?: string
+          platform_client_key_ciphertext?: string | null
+          platform_wl_domain?: string | null
+          slug?: string
+          updated_at?: string
+          webhook_secret_ciphertext?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_workspace_role: {
+        Args: { _role: string; _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
+      is_workspace_member: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

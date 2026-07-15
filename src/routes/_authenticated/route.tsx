@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect, Link, useNavigate } from "@tanstack/
 import { supabase } from "@/integrations/supabase/client";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Building2, Target, Users, CheckCircle2, Inbox, BarChart3, LogOut, KanbanSquare } from "lucide-react";
+import { LayoutDashboard, Building2, Target, Users, CheckCircle2, Inbox, BarChart3, LogOut, KanbanSquare, Settings } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -23,6 +23,7 @@ const nav = [
   { to: "/approval", label: "Approval", icon: CheckCircle2 },
   { to: "/inbox", label: "Inbox", icon: Inbox },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 function AuthedShell() {

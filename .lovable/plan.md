@@ -1,56 +1,105 @@
-# AI Outbound Agent — Thin MVP Plan
+# Maindesk / Platform API integration — build plan
 
-A single-user tool that goes end-to-end: define your business → AI finds coaches/consultants via Firecrawl → AI enriches + detects pain points → AI drafts personalized emails → you approve → Lovable Emails sends → basic inbox + analytics.
+Goal: turn the outreach tool into a resellable multi-tenant product that plugs into any Simvoly white-label (Maindesk first), auto-provisions personalized demo sites for hot leads, and closes the loop when leads subscribe.
 
-## Prerequisites (auto-enabled)
+Delivered in 3 phases, in the order you chose.
 
-- Lovable Cloud (database, auth, server functions)
-- Lovable AI Gateway (already available via `LOVABLE_API_KEY`)
-- Firecrawl connector (you'll be prompted to connect once)
-- Lovable Emails + email domain (you'll be prompted to set up the sending domain)
-- Single-user auth: simple email/password login so your data is protected
+---
 
-## Screens
+## Phase 1 — Multi-tenant workspaces (foundation)
 
-1. **Onboarding / My Business** — enter your website URL + offer description; AI scrapes and summarizes it into a "business profile" used for all personalization.
-2. **Targeting** — pick coach/consultant niches (business, life, fitness, marketing, ops…), locations, keywords. Save as a "search config".
-3. **Leads** — table of discovered leads with status (new / enriched / drafted / approved / sent / replied). Row click → detail drawer with business summary, offer, detected pain points, and draft email(s).
-4. **Approval Queue** — the core screen. Card per pending email showing lead context + editable email + subject. Approve / Edit / Regenerate / Reject. Bulk approve.
-5. **Campaigns** — one default sequence (initial + up to 4 follow-ups, day offsets). Assign leads. Daily send cap slider.
-6. **Inbox** — replies grouped by lead. AI classifies (interested / question / objection / not interested) and suggests a reply you can send.
-7. **Analytics** — sent, delivered, reply rate, positive reply rate, conversations started.
+New tables:
+- `workspaces` — name, slug, owner, `platform_wl_domain`, `platform_client_key_ciphertext`, `main_site_domain`, `main_site_api_key_ciphertext`, timestamps.
+- `workspace_members` — workspace_id, user_id, role (`owner`/`admin`/`member`), unique(workspace_id,user_id).
+- `has_workspace_role(_user, _workspace, _role)` SECURITY DEFINER helper (same pattern as user_roles guidance).
+- Add nullable `workspace_id` to every existing user-scoped table (`business_profiles`, `business_sources`, `leads`, `lead_enrichments`, `email_drafts`, `outbound_queue`, `email_sends`, `inbound_messages`, `search_configs`, `automation_settings`) with FK + index.
+- Migration backfill: for each existing user, create a personal workspace and stamp their rows.
+- RLS: rewrite policies to use `has_workspace_role(auth.uid(), workspace_id, 'member')` instead of `user_id = auth.uid()`. Keep `user_id` for audit.
 
-## Backend (TanStack server functions + one cron route)
+Server-side crypto:
+- New `src/lib/workspace-crypto.server.ts` — AES-256-GCM using `APP_USER_CONNECTION_KEY_SECRET` (auto-provisioned) to encrypt both keys. Never returned to browser.
+- New `src/lib/workspace.functions.ts` — `getMyWorkspaces`, `createWorkspace`, `setActiveWorkspace` (stores in profile / cookie), `updateWorkspaceKeys` (accepts plaintext, encrypts before insert; returns only booleans indicating presence, never the key).
 
-- **Business profile**: `analyzeBusiness` server fn → Firecrawl scrape user site → Gemini summary → stored in `business_profile`.
-- **Lead discovery**: `discoverLeads` server fn → Firecrawl search on niche queries → dedupe by domain → insert into `leads`.
-- **Enrichment + pain points**: `enrichLead` server fn → Firecrawl scrape lead site → Gemini structured output (audience, offer, pricing signals, funnel presence, pain points).
-- **Email drafting**: `draftEmails` server fn → Gemini generates initial + follow-ups using business profile + lead context; stored in `email_drafts` (status=pending_approval).
-- **Approval actions**: approve / edit / regenerate / reject server fns.
-- **Sending**: approved drafts go into an outbound queue with `scheduled_at` respecting the daily cap. Cron route (`/api/public/cron/send-outbound`, HMAC-verified) runs every few minutes, pulls due items, sends via Lovable Emails, records `email_sends`.
-- **Follow-ups**: after each send, next step scheduled at offset; if a reply is detected, sequence halts.
-- **Inbox / replies**: inbound webhook route (`/api/public/webhooks/inbound-email`) receives replies, matches to lead by message-id/thread, stores in `messages`, runs Gemini classifier + suggested reply.
+UI:
+- Workspace switcher in the sidebar header (`_authenticated/route.tsx`).
+- New page **Settings → Workspace** (`_authenticated/settings.tsx`) with:
+  - Workspace name.
+  - **Platform API** section: WL domain (e.g. `maindesk.io`) + Platform X-CLIENT-KEY (password field, masked once saved, "Replace key" button).
+  - **Main Site API** section: main site domain + Website API key.
+  - Test buttons that ping `GET /api/v1/plans` and `GET /api/site/contacts?limit=1` respectively and show ✓ / error.
+- All existing screens read/write against the active workspace_id.
 
-## Data model (Postgres via Lovable Cloud, RLS scoped to your user)
+---
 
-`business_profile`, `search_configs`, `leads`, `lead_enrichments`, `pain_points`, `campaigns`, `sequence_steps`, `email_drafts`, `outbound_queue`, `email_sends`, `messages`, `send_settings` (daily cap, ramp-up).
+## Phase 2 — Auto-provision demo site + SSO on hot leads
 
-## AI usage
+New helper: `src/lib/platform-api.server.ts` — thin typed client for the Platform API. Reads the current workspace's decrypted client key + WL domain per call. Exposes:
+- `createProjectWithWebsite({ workspaceId, lead, templateId?, funnelTemplateId? })`
+- `assignCustomer(...)`, `createSsoSession(...)`, `listWebsiteTemplates()`, `listFunnelTemplates()`, `getPlans()`.
 
-- Model: `google/gemini-3-flash-preview` via AI SDK + Lovable Gateway helper (server-only). Structured output via `Output.object` for enrichment, pain points, and reply classification. Plain text for email bodies.
+New table `lead_platform_sites`:
+- lead_id (unique), workspace_id, project_id, website_id, subdomain, template_id, template_type, personalization_tags jsonb, edit_sso_url (nullable — short-lived, refreshed on demand), sso_expires_at, created_at.
 
-## Explicitly out of scope for v1
+New server fns (`src/lib/platform.functions.ts`):
+- `provisionDemoSiteForLead(lead_id, templateId?)` — pulls lead + enrichment, extracts brand color from scraped HTML (already stored in `website_signals`), builds `personalizationTags` from business_name / offer / audience, POSTs to `/api/v1/website` using `externalCustomerId = lead.id`, stores result in `lead_platform_sites`, returns subdomain.
+- `getFreshEditLink(lead_id)` — always mints a fresh SSO session (15-min expiry) and returns the `accessUrl`.
+- `listAvailableTemplates()` — cached list for the picker.
 
-LinkedIn, multi-channel, team/multi-tenant, advanced analytics, A/B testing, complex deliverability tooling (SPF/DKIM handled by Lovable Emails setup only).
+Automation hooks (opt-in per workspace via new toggle `automation_settings.auto_provision_on_reply`):
+- On inbound reply classified as `interested`, and on AI stage move to `in_progress`, auto-run `provisionDemoSiteForLead` if none exists.
+- Draft/regenerate follow-up email #3 to include the fresh edit link.
 
-## Suggested build order (each shippable)
+UI:
+- **Lead drawer** (`_authenticated/leads.tsx`): new "Demo site" panel — Provision button with template dropdown, subdomain preview, "Open live preview" and "Get 1-click edit link" (copies fresh SSO URL, warns 15-min expiry).
+- **Board card**: badge "Demo site ready" when provisioned.
+- **My Business**: optional default template id per niche.
 
-1. Auth + shell + My Business (analyze site).
-2. Targeting + lead discovery via Firecrawl.
-3. Enrichment + pain points.
-4. Email drafting + approval queue.
-5. Sending queue + cron + follow-ups.
-6. Inbox + reply classifier.
-7. Analytics dashboard.
+---
 
-Approve this and I'll start with steps 1–2 (auth, business profile, targeting, lead discovery) in the first build pass.
+## Phase 3 — Platform webhooks → close the loop
+
+New route `src/routes/api/public/webhooks.platform.ts` (POST):
+- Verifies `X-Webhook-Signature` HMAC-SHA512 against a per-workspace signing secret stored in `workspaces.webhook_secret_ciphertext`.
+- Resolves workspace by matching `project.id` → `lead_platform_sites.project_id`.
+- Handles topics:
+  - `subscription_activated` → move lead to `won`, write real MRR into new `leads.won_mrr` / `won_period` / `won_at`, insert into new `revenue_events` table (`type='activation'`, amount, period, plan_id, plan_name).
+  - `subscription_renewed` → insert `revenue_events` row (`type='renewal'`).
+  - `subscription_expired` / `trial_expired` → move lead to `lost` with `ai_stage_reason='subscription_expired'`.
+  - `user_created` / `project_created` — informational log into `platform_events`.
+- All ignored payloads still logged for debugging.
+
+Analytics:
+- Update `/analytics` page: real MRR from `revenue_events`, LTV placeholder, conversion rate (leads → won), average time-to-close.
+- Board expected value continues to use `avg_deal_value` for open stages; won stage now shows actual `won_mrr`.
+
+Settings additions in Phase-3:
+- Webhook URL + signing secret shown in **Settings → Workspace → Platform** with copy button and setup instructions for the WL admin panel.
+
+---
+
+## Cross-cutting
+
+- Same encryption helper covers all secrets (Platform key, Website key, webhook signing secret).
+- Every new server fn is `requireSupabaseAuth` + `has_workspace_role` check.
+- `src/lib/autopilot.server.ts` already loops per user — will loop per workspace member's active workspace instead.
+- No changes to Firecrawl / AI / email pipelines beyond passing `workspace_id` through.
+
+## Out of scope for this plan (call out later if wanted)
+
+- Billing/paywall for the outreach tool itself (Stripe metering per workspace).
+- Public marketplace of ready templates matched to niches.
+- Per-workspace custom SMTP for Lovable Emails.
+
+---
+
+## Technical notes
+
+- Uses existing patterns: `createServerFn` + `requireSupabaseAuth`; `supabaseAdmin` loaded inside handlers only.
+- All Platform API calls use `application/x-www-form-urlencoded`, `X-CLIENT-KEY` header, per docs.
+- SSO uses the recommended `POST /api/platform/session` (not deprecated `/api/v1/build`).
+- Webhook route lives under `/api/public/*` (auth-bypassed on publish); signature verification is the only trust boundary.
+- Migration ordering: create workspace tables → backfill → add workspace_id to existing tables (nullable) → backfill → set NOT NULL → drop `user_id`-based RLS and replace.
+
+## Approval
+
+Approve to start Phase 1 (workspaces + settings UI + migrations). Phases 2 and 3 land in follow-up migrations so each phase ships independently.
