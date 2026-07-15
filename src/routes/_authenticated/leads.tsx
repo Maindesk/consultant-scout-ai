@@ -342,8 +342,16 @@ function WebsiteSignalsPanel({ signals }: { signals: any }) {
         </div>
       )}
       {page && (
-        <div className="text-xs text-muted-foreground">
-          {page.word_count} words · H1: {page.has_h1 ? "yes" : "no"} · OG image: {page.has_og_image ? "yes" : "no"} · Mobile viewport: {page.has_viewport ? "yes" : "no"}
+        <div className="space-y-1">
+          <div className="text-xs text-muted-foreground">
+            {page.word_count} words · H1: {page.has_h1 ? "yes" : "no"} · OG image: {page.has_og_image ? "yes" : "no"}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 border ${page.responsive ? "bg-green-500/10 text-green-700 border-green-500/30" : "bg-red-500/10 text-red-700 border-red-500/30"}`}
+              title={page.responsive_signals ? `viewport meta: ${page.responsive_signals.viewport ? "✓" : "✗"} · media queries: ${page.responsive_signals.media_queries ? "✓" : "✗"} · responsive framework: ${page.responsive_signals.responsive_framework ? "✓" : "✗"} · srcset images: ${page.responsive_signals.srcset ? "✓" : "✗"} · fluid container: ${page.responsive_signals.fluid_container ? "✓" : "✗"}` : ""}>
+              {page.responsive ? "Mobile-responsive" : "Not mobile-responsive"}
+            </span>
+          </div>
         </div>
       )}
       {tools.length > 0 && (
