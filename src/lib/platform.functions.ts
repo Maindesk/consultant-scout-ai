@@ -17,7 +17,8 @@ export const provisionDemoSiteForLead = createServerFn({ method: "POST" })
     if (!lead) throw new Error("Lead not found");
 
     const { getActiveWorkspaceIdForUser } = await import("./quota.server");
-    const workspaceId = lead.workspace_id ?? (await getActiveWorkspaceIdForUser(context.userId));
+    const workspaceId =
+      ((lead as any).workspace_id as string | null) ?? (await getActiveWorkspaceIdForUser(context.userId));
     if (!workspaceId) throw new Error("No active workspace");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -122,10 +123,10 @@ export const getDemoSiteForLead = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { lead_id: string }) => d)
   .handler(async ({ context, data }) => {
-    const { data } = await context.supabase
+    const { data: row } = await context.supabase
       .from("lead_platform_sites")
       .select("*")
       .eq("lead_id", data.lead_id)
       .maybeSingle();
-    return data ?? null;
+    return row ?? null;
   });
