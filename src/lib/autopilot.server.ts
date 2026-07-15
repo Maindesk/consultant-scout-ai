@@ -240,7 +240,7 @@ ${md.slice(0, 15000) || "(no content)"}`,
           funnel_presence: output.funnel_presence,
           pain_points: output.pain_points,
           raw_markdown: md.slice(0, 20000),
-          website_signals: signals as any,
+          website_signals: { ...(signals as any), pages_scraped: pagesScraped },
         },
         { onConflict: "lead_id" },
       );
