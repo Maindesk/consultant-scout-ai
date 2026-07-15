@@ -43,6 +43,9 @@ function BusinessPage() {
     sender_name: "",
     sender_email: "",
     daily_send_cap: 25,
+    avg_deal_value: 0,
+    avg_close_rate: 0.1,
+    currency: "USD",
   });
 
   const [srcUrl, setSrcUrl] = useState("");
@@ -57,6 +60,9 @@ function BusinessPage() {
         sender_name: profile.sender_name ?? "",
         sender_email: profile.sender_email ?? "",
         daily_send_cap: profile.daily_send_cap ?? 25,
+        avg_deal_value: Number(profile.avg_deal_value ?? 0),
+        avg_close_rate: Number(profile.avg_close_rate ?? 0.1),
+        currency: profile.currency ?? "USD",
       });
     }
   }, [profile]);
