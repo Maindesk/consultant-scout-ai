@@ -91,21 +91,24 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
   const fc = getFirecrawl();
   const gateway = getLovableGateway();
 
-  // 1. Discover
-  const niches = cfg.niches.length ? cfg.niches : ["coach"];
-  const locs = cfg.locations.length ? cfg.locations : [""];
-  const extra = (cfg.keywords ?? []).join(" ");
-  const platformHint = (cfg.tech_stack ?? [])[0] ?? "";
-  const queries: string[] = [];
-  for (const n of niches) for (const l of locs) queries.push([n, l, extra, platformHint].filter(Boolean).join(" ").trim());
+  // 1. Discover — practitioner-focused queries + junk/platform filtering
+  const techStack: PlatformName[] = (cfg.tech_stack ?? []) as PlatformName[];
+  const queries = buildPractitionerQueries({
+    niches: cfg.niches ?? [],
+    locations: cfg.locations ?? [],
+    keywords: cfg.keywords ?? [],
+    platform: techStack[0] ?? null,
+  });
 
-  const perQuery = Math.max(3, Math.ceil((target * 2) / Math.max(queries.length, 1)));
-  const found: Array<{ url: string; title?: string; niche: string }> = [];
+  const perQuery = Math.max(5, Math.ceil((target * 4) / Math.max(queries.length, 1)));
+  const found: Array<{ url: string; title?: string; description?: string; niche: string }> = [];
   for (const q of queries.slice(0, 6)) {
     try {
       const res: any = await fc.search(q, { limit: perQuery });
       const results = res?.web ?? res?.data ?? [];
-      for (const r of results) if (r?.url) found.push({ url: r.url, title: r.title, niche: q.split(" ")[0] ?? "" });
+      for (const r of results) {
+        if (r?.url) found.push({ url: r.url, title: r.title, description: r.description, niche: (cfg.niches ?? [])[0] ?? "" });
+      }
     } catch (e) {
       result.errors.push(`search failed: ${String(e)}`);
     }
@@ -118,6 +121,30 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
     const domain = extractDomain(f.url);
     if (!domain || seen.has(domain) || SKIP_DOMAINS.test(domain)) continue;
     seen.add(domain);
+
+    const junk = isJunkLead({ url: f.url, title: f.title, description: f.description, domain });
+    if (junk.junk) {
+      result.filtered_out += 1;
+      continue;
+    }
+
+    // If a platform is required, verify BEFORE saving.
+    let verifiedPlatform: PlatformName | null = null;
+    if (techStack.length > 0) {
+      try {
+        const scrape: any = await fc.scrape(f.url, { formats: ["html"], onlyMainContent: false });
+        const html = scrape?.html ?? scrape?.rawHtml ?? "";
+        verifiedPlatform = detectPlatform(html);
+        if (!verifiedPlatform || !techStack.includes(verifiedPlatform)) {
+          result.filtered_out += 1;
+          continue;
+        }
+      } catch {
+        result.filtered_out += 1;
+        continue;
+      }
+    }
+
     const { data: row } = await supabaseAdmin
       .from("leads")
       .upsert(
@@ -130,6 +157,7 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
           niche: f.niche,
           source: "autopilot",
           status: "new",
+          platform: verifiedPlatform,
         },
         { onConflict: "user_id,domain", ignoreDuplicates: true },
       )
