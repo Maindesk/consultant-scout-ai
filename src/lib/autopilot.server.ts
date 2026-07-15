@@ -248,24 +248,26 @@ ${md.slice(0, 15000) || "(no content)"}`,
       const { output } = await generateText({
         model: gateway(CHAT_MODEL),
         output: Output.object({ schema: SequenceSchema }),
-        prompt: `Personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "coach/consultant"}.
+        prompt: `Personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
 
-Sender:
+The angle is NOT one feature. The angle is: their current website platform (${lead.platform ?? "their current builder"}) forces them to duct-tape 3rd-party tools together — fragmenting brand, hurting perf, and stacking monthly subscriptions. Our platform replaces that stack with one on-brand, all-in-one solution.
+
+Sender platform:
 - Summary: ${bp.ai_summary ?? bp.offer_description ?? ""}
 - Value prop: ${bp.value_proposition ?? ""}
 - Ideal client: ${bp.ideal_client ?? ""}
-- Product capabilities (features WE offer natively — pitch as alternatives to prospect's embedded tools):
+- Native platform capabilities (things WE ship out of the box):
 ${(bp as any).product_capabilities ?? "(none provided)"}
 
 Prospect:
 - Business: ${lead.business_name ?? lead.domain}
 - Website: ${lead.website}
-- Platform: ${lead.platform ?? "unknown"}
+- Current platform: ${lead.platform ?? "unknown"}
 - Summary: ${lead.enrichment.business_summary}
 - Their offer: ${lead.enrichment.offer}
 - Audience: ${lead.enrichment.target_audience}
 - Pain points: ${JSON.stringify(lead.enrichment.pain_points)}
-- Embedded 3rd-party tools on their site: ${JSON.stringify(lead.signals?.tools ?? [])}
+- Embedded 3rd-party tools stitched onto their site: ${JSON.stringify(lead.signals?.tools ?? [])}
 - Site gaps: ${JSON.stringify(lead.signals?.gaps ?? [])}
 - Perf: ${JSON.stringify(lead.signals?.performance ?? {})}
 
@@ -273,7 +275,14 @@ Campaign goal: ${EMAIL_GOAL_LABELS[goal as keyof typeof EMAIL_GOAL_LABELS] ?? go
 ${goalFraming(goal)}
 
 4-email sequence: initial + 3 follow-ups. Tone: professional.
-Email 1 MUST reference ONE detected tool on their site AND pitch our matching product capability as the native alternative (e.g. "I noticed you embed Calendly — our platform ships booking out of the box, keeping your site on-brand"). If no tool matches a capability, reference a gap. CTA in every email must match the campaign goal above. Under 120 words each. Day offsets: 0, 3, 7, 14. Subject under 60 chars.`,
+- Pitch is a PLATFORM SWITCH, never one feature.
+- Email 1: name 2-3 detected 3rd-party tools, frame the stack sprawl (fragmented brand + monthly cost + slower site), position our platform as the consolidated on-brand replacement, and reference native capabilities to prove the switch is a superset.
+- Email 2: quantify drag (overlapping subs, brand inconsistency, perf hit).
+- Email 3: proof / migration-is-handled objection killer.
+- Email 4: soft break-up matching goal.
+- If no tools detected, use gaps + platform limitations instead.
+- Under 130 words each. Day offsets 0, 3, 7, 14. Subject under 60 chars. CTA matches campaign goal.`,
+
       });
 
       await supabaseAdmin

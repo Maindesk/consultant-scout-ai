@@ -49,23 +49,26 @@ export const draftEmailsForLead = createServerFn({ method: "POST" })
     const { output } = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: SequenceSchema }),
-      prompt: `You are writing a highly personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "coach/consultant"}.
+      prompt: `You are writing a highly personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
 
-Sender business:
+The angle is NOT selling a single feature. The angle is: their current website platform (${lead.platform ?? "their current builder"}) forces them to duct-tape together many 3rd-party tools (calendar, email capture, chat, payments, memberships, funnels, etc.), which fragments their brand, hurts performance, and quietly costs them money every month in overlapping subscriptions. Our platform replaces that stack with one on-brand, all-in-one solution.
+
+Sender platform:
 - Summary: ${bp.ai_summary ?? bp.offer_description ?? ""}
 - Value proposition: ${bp.value_proposition ?? ""}
 - Ideal client: ${bp.ideal_client ?? ""}
-- Product capabilities (features WE offer natively — use these as alternatives to the prospect's embedded 3rd-party tools):
+- Native platform capabilities (things WE ship out of the box, so leads can drop the equivalent 3rd-party tools):
 ${(bp as any).product_capabilities ?? "(none provided)"}
 
 Prospect:
 - Name/business: ${lead.business_name ?? lead.domain}
 - Website: ${lead.website}
+- Current platform: ${lead.platform ?? "unknown"}
 - Business summary: ${enrichment?.business_summary ?? ""}
 - Their offer: ${enrichment?.offer ?? ""}
 - Their audience: ${enrichment?.target_audience ?? ""}
 - Pain points detected: ${JSON.stringify(enrichment?.pain_points ?? [])}
-- Embedded 3rd-party tools on their site: ${JSON.stringify(tools)}
+- Embedded 3rd-party tools stitched onto their site: ${JSON.stringify(tools)}
 - Website gaps: ${JSON.stringify(gaps)}
 - Page perf: ${JSON.stringify((enrichment as any)?.website_signals?.performance ?? {})}
 
@@ -74,11 +77,14 @@ ${goalFraming(goal)}
 
 Write a 4-email sequence: initial + 3 follow-ups.
 - Tone: ${tone}
-- The FIRST email MUST reference ONE specific detected tool on their site AND pitch our matching product capability as the native alternative. Example pattern: "I noticed you embed Calendly on your booking page — our platform ships booking & appointments right out of the box, which keeps your site fully on-brand and strengthens brand perception for new visitors."
-- If no relevant tool matches a capability, reference a website gap instead.
-- Tie their pain point to the sender's value prop.
-- Each email under 120 words. Day offsets: 0, 3, 7, 14. Subject under 60 chars.
-- CTA in every email must match the campaign goal above.`,
+- The pitch is a PLATFORM SWITCH, not a feature. Never sell one capability in isolation.
+- Email 1: name 2-3 specific 3rd-party tools you detected on their site, add them up as "stack sprawl" (fragmented brand + monthly cost + slower site), and position our platform as the consolidated on-brand replacement. Reference the detected native capabilities to show the switch is a superset, not a downgrade.
+- Email 2: quantify the drag — overlapping subscriptions, brand inconsistency across embedded widgets, perf hit; hint at what their site could look/feel like unified.
+- Email 3: proof / short story of a similar business that moved off ${lead.platform ?? "a similar builder"} and consolidated, or address the obvious "switching is painful" objection (migration is handled).
+- Email 4: soft break-up matching the campaign goal.
+- If no tools were detected, lead with the gap + platform-limitation angle instead of naming tools.
+- Each email under 130 words. Day offsets: 0, 3, 7, 14. Subject under 60 chars. CTA in every email matches the campaign goal above.`,
+
     });
 
     // Delete previous pending drafts
