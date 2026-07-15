@@ -490,7 +490,7 @@ function FinalCTA() {
               ))}
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight max-w-3xl mx-auto">
-              Your next 100 customers are already online. Go get them.
+              Your next 100 white-label users are already online. Go get them.
             </h2>
             <p className="mt-4 text-white/90 text-lg max-w-xl mx-auto">
               Set up in 10 minutes. First personalized emails ready before your coffee cools.
