@@ -146,7 +146,7 @@ export const updateWorkspaceSettings = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!member || !["owner", "admin"].includes(member.role)) throw new Error("Forbidden");
 
-    const patch: Record<string, unknown> = {};
+    const patch: Record<string, any> = {};
     if (data.name !== undefined) patch.name = data.name.trim();
     if (data.platform_wl_domain !== undefined) patch.platform_wl_domain = data.platform_wl_domain?.trim() || null;
     if (data.main_site_domain !== undefined) patch.main_site_domain = data.main_site_domain?.trim() || null;
