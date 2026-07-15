@@ -158,7 +158,7 @@ function Dashboard() {
               </div>
               <p className="text-[13px] text-muted-foreground mt-1 max-w-xl">
                 Every morning, discover new matching leads, enrich them with tech-stack signals, and draft
-                a personalized email sequence — waiting for your one-click approval.
+                a personalized email sequence, waiting for your one-click approval.
               </p>
             </div>
           </div>
