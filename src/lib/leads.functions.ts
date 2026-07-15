@@ -53,19 +53,18 @@ export const discoverLeads = createServerFn({ method: "POST" })
     const fc = getFirecrawl();
     const limit = Math.min(data.limit ?? 15, 30);
 
-    const niches = cfg.niches.length ? cfg.niches : ["coach"];
-    const locs = cfg.locations.length ? cfg.locations : [""];
-    const extra = cfg.keywords.join(" ");
-    const platformHint = (cfg.tech_stack ?? [])[0] ?? "";
-    const queries: string[] = [];
-    for (const n of niches) {
-      for (const l of locs) {
-        queries.push([n, l, extra, platformHint].filter(Boolean).join(" ").trim());
-      }
-    }
+    const techStack: PlatformName[] = (cfg.tech_stack ?? []) as PlatformName[];
+    const platformHint = techStack[0] ?? null;
+    const queries = buildPractitionerQueries({
+      niches: cfg.niches ?? [],
+      locations: cfg.locations ?? [],
+      keywords: cfg.keywords ?? [],
+      platform: platformHint,
+    });
 
-    const perQuery = Math.max(3, Math.ceil(limit / queries.length));
-    const found: Array<{ url: string; title?: string; description?: string; niche: string; location: string }> = [];
+    // Over-fetch: junk filter + platform verification will drop many.
+    const perQuery = Math.max(5, Math.ceil((limit * 4) / Math.max(queries.length, 1)));
+    const found: Array<{ url: string; title?: string; description?: string; niche: string }> = [];
 
     for (const q of queries.slice(0, 6)) {
       try {
@@ -77,8 +76,7 @@ export const discoverLeads = createServerFn({ method: "POST" })
               url: r.url,
               title: r.title,
               description: r.description,
-              niche: queries[0].split(" ")[0] ?? "",
-              location: "",
+              niche: (cfg.niches ?? [])[0] ?? "",
             });
           }
         }
@@ -89,11 +87,36 @@ export const discoverLeads = createServerFn({ method: "POST" })
 
     const seen = new Set<string>();
     const inserted: any[] = [];
+    const rejected: Array<{ url: string; reason: string }> = [];
+
     for (const f of found) {
+      if (inserted.length >= limit) break;
       const domain = extractDomain(f.url);
       if (!domain || seen.has(domain)) continue;
       seen.add(domain);
-      if (/^(?:facebook|instagram|linkedin|twitter|x|youtube|tiktok|yelp|reddit|medium|wikipedia|amazon|apple|google)\./.test(domain)) continue;
+
+      const junk = isJunkLead({ url: f.url, title: f.title, description: f.description, domain });
+      if (junk.junk) {
+        rejected.push({ url: f.url, reason: junk.reason ?? "junk" });
+        continue;
+      }
+
+      // If user requires a specific platform, verify BEFORE saving as a lead.
+      let verifiedPlatform: PlatformName | null = null;
+      if (techStack.length > 0) {
+        try {
+          const scrape: any = await fc.scrape(f.url, { formats: ["html"], onlyMainContent: false });
+          const html = scrape?.html ?? scrape?.rawHtml ?? "";
+          verifiedPlatform = detectPlatform(html);
+          if (!verifiedPlatform || !techStack.includes(verifiedPlatform)) {
+            rejected.push({ url: f.url, reason: `platform mismatch (${verifiedPlatform ?? "unknown"})` });
+            continue;
+          }
+        } catch (e) {
+          rejected.push({ url: f.url, reason: "scrape failed" });
+          continue;
+        }
+      }
 
       const { data: row, error } = await context.supabase
         .from("leads")
@@ -105,9 +128,9 @@ export const discoverLeads = createServerFn({ method: "POST" })
             domain,
             business_name: f.title,
             niche: f.niche,
-            location: f.location,
             source: "firecrawl_search",
             status: "new",
+            platform: verifiedPlatform,
           },
           { onConflict: "user_id,domain", ignoreDuplicates: true },
         )
@@ -115,7 +138,7 @@ export const discoverLeads = createServerFn({ method: "POST" })
         .maybeSingle();
       if (!error && row) inserted.push(row);
     }
-    return { discovered: inserted.length };
+    return { discovered: inserted.length, rejected: rejected.length, sample_rejected: rejected.slice(0, 5) };
   });
 
 const EnrichmentSchema = z.object({
