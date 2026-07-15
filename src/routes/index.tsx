@@ -110,7 +110,10 @@ function Hero() {
 
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] max-w-5xl mx-auto">
           Fill your pipeline with{" "}
-          <span className="bg-[var(--gradient-brand)] bg-clip-text text-transparent">
+          <span
+            className="bg-clip-text text-transparent"
+            style={{ backgroundImage: "var(--gradient-brand)" }}
+          >
             perfect-fit customers
           </span>{" "}
           — on autopilot.
