@@ -103,14 +103,14 @@ export const discoverLeads = createServerFn({ method: "POST" })
       }
 
       // If user requires a specific platform, verify BEFORE saving as a lead.
-      let verifiedPlatform: PlatformName | null = null;
+      let detection = { platform: null as PlatformName | null, confidence: 0, matches: 0, alternatives: [] as any[] };
       if (techStack.length > 0) {
         try {
           const scrape: any = await fc.scrape(f.url, { formats: ["html"], onlyMainContent: false });
           const html = scrape?.html ?? scrape?.rawHtml ?? "";
-          verifiedPlatform = detectPlatform(html);
-          if (!verifiedPlatform || !techStack.includes(verifiedPlatform)) {
-            rejected.push({ url: f.url, reason: `platform mismatch (${verifiedPlatform ?? "unknown"})` });
+          detection = detectPlatformDetailed(html);
+          if (!detection.platform || !techStack.includes(detection.platform)) {
+            rejected.push({ url: f.url, reason: `platform mismatch (${detection.platform ?? "unknown"})` });
             continue;
           }
         } catch (e) {
@@ -131,7 +131,10 @@ export const discoverLeads = createServerFn({ method: "POST" })
             niche: f.niche,
             source: "firecrawl_search",
             status: "new",
-            platform: verifiedPlatform,
+            platform: detection.platform,
+            platform_confidence: detection.confidence,
+            platform_matches: detection.matches,
+            platform_alternatives: detection.alternatives,
           },
           { onConflict: "user_id,domain", ignoreDuplicates: true },
         )
