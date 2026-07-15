@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output } from "ai";
+import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+
+function extractJson(text: string): unknown {
+  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  try { return JSON.parse(cleaned); } catch {}
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch {} }
+  throw new Error("Could not parse AI response as JSON");
+}
 
 const SequenceSchema = z.object({
   emails: z.array(
