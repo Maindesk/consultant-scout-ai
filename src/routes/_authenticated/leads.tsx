@@ -144,6 +144,29 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
             </SheetHeader>
             <div className="mt-4 space-y-4 text-sm">
               {data.lead.email && <div><span className="text-muted-foreground">Email:</span> {data.lead.email}</div>}
+              {data.lead.platform && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1">Detected platform</div>
+                  <div className="flex flex-wrap gap-1">
+                    <ConfidenceBadge platform={data.lead.platform} confidence={(data.lead as any).platform_confidence} />
+                    {Array.isArray((data.lead as any).platform_alternatives) &&
+                      (data.lead as any).platform_alternatives.slice(0, 4).map((a: any) => (
+                        <ConfidenceBadge key={a.platform} platform={a.platform} confidence={a.confidence} />
+                      ))}
+                  </div>
+                  {(data.lead as any).platform_matches != null && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {(data.lead as any).platform_matches} signature match{(data.lead as any).platform_matches === 1 ? "" : "es"} found in HTML
+                    </div>
+                  )}
+                </div>
+              )}
+              {(data.lead as any).ai_stage_reason && (
+                <div className="border-l-2 border-indigo-500 pl-3">
+                  <div className="text-xs font-medium text-muted-foreground">AI stage decision</div>
+                  <div className="text-xs">{(data.lead as any).ai_stage_reason}</div>
+                </div>
+              )}
               {data.enrichment && (
                 <>
                   <Section title="Summary" body={data.enrichment.business_summary} />
