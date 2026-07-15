@@ -3,13 +3,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listLeads, enrichLead, getLead } from "@/lib/leads.functions";
 import { draftEmailsForLead } from "@/lib/drafts.functions";
+import {
+  provisionDemoSiteForLead,
+  getFreshEditLink,
+  getDemoSiteForLead,
+  listAvailableTemplates,
+} from "@/lib/platform.functions";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Loader2, Sparkles, Mail, ExternalLink } from "lucide-react";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Loader2, Sparkles, Mail, ExternalLink, Globe, KeyRound } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/leads")({
   component: LeadsPage,
@@ -192,6 +200,8 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
                 </>
               )}
 
+              <DemoSitePanel leadId={data.lead.id} />
+
               {data.drafts.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-2">Drafted emails</div>
@@ -213,6 +223,80 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
     </Sheet>
   );
 }
+
+function DemoSitePanel({ leadId }: { leadId: string }) {
+  const qc = useQueryClient();
+  const getSite = useServerFn(getDemoSiteForLead);
+  const listTpls = useServerFn(listAvailableTemplates);
+  const provision = useServerFn(provisionDemoSiteForLead);
+  const editLink = useServerFn(getFreshEditLink);
+  const [tpl, setTpl] = useState<string | undefined>(undefined);
+
+  const { data: site } = useQuery({
+    queryKey: ["demo-site", leadId],
+    queryFn: () => getSite({ data: { lead_id: leadId } }),
+  });
+  const { data: templates } = useQuery({
+    queryKey: ["demo-templates"],
+    queryFn: () => listTpls(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const provMut = useMutation({
+    mutationFn: () => provision({ data: { lead_id: leadId, template_id: tpl } }),
+    onSuccess: () => {
+      toast.success("Demo site provisioned");
+      qc.invalidateQueries({ queryKey: ["demo-site", leadId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const linkMut = useMutation({
+    mutationFn: () => editLink({ data: { lead_id: leadId } }),
+    onSuccess: (r: { url: string | null }) => {
+      if (r.url) window.open(r.url, "_blank");
+      qc.invalidateQueries({ queryKey: ["demo-site", leadId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <div className="border-t pt-3 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <Globe className="w-3.5 h-3.5" /> Personalized demo site
+      </div>
+      {site ? (
+        <div className="space-y-2">
+          <div className="text-xs">
+            Project <code>{site.project_id}</code>
+            {site.subdomain && <> · {site.subdomain}</>}
+          </div>
+          <Button size="sm" variant="outline" onClick={() => linkMut.mutate()} disabled={linkMut.isPending}>
+            {linkMut.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <KeyRound className="w-3 h-3 mr-1" />}
+            Open one-click edit link
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {Array.isArray(templates) && templates.length > 0 && (
+            <Select value={tpl} onValueChange={setTpl}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choose template (optional)" /></SelectTrigger>
+              <SelectContent>
+                {templates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button size="sm" onClick={() => provMut.mutate()} disabled={provMut.isPending}>
+            {provMut.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+            Provision demo site
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function Section({ title, body }: { title: string; body?: string | null }) {
   if (!body) return null;
