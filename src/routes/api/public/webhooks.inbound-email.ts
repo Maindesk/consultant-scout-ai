@@ -120,7 +120,76 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
           })
           .eq("id", lead.id);
 
+        // If interested + user opted in, auto-provision a personalized demo site.
+        if (classification === "interested") {
+          const { data: settings } = await supabaseAdmin
+            .from("automation_settings")
+            .select("auto_provision_demo")
+            .eq("user_id", lead.user_id)
+            .maybeSingle();
+          if (settings?.auto_provision_demo) {
+            try {
+              const { data: existing } = await supabaseAdmin
+                .from("lead_platform_sites")
+                .select("id")
+                .eq("lead_id", lead.id)
+                .maybeSingle();
+              if (!existing) {
+                const { data: bp } = await supabaseAdmin
+                  .from("business_profiles")
+                  .select("active_workspace_id")
+                  .eq("user_id", lead.user_id)
+                  .maybeSingle();
+                const workspaceId = bp?.active_workspace_id ?? null;
+                if (workspaceId) {
+                  const { data: leadRow } = await supabaseAdmin
+                    .from("leads")
+                    .select("*")
+                    .eq("id", lead.id)
+                    .maybeSingle();
+                  const { data: enrichment } = await supabaseAdmin
+                    .from("lead_enrichments")
+                    .select("*")
+                    .eq("lead_id", lead.id)
+                    .maybeSingle();
+                  const businessName = leadRow?.business_name ?? leadRow?.domain ?? "Prospect";
+                  const email = leadRow?.email ?? `demo+${lead.id}@example.com`;
+                  const tags: Record<string, string> = {
+                    business_name: businessName,
+                    offer: (enrichment?.offer ?? "").slice(0, 200),
+                    audience: (enrichment?.target_audience ?? "").slice(0, 200),
+                    brand_color: ((enrichment as any)?.website_signals?.brand_color ?? "") as string,
+                  };
+                  const { createProjectWithWebsite } = await import("@/lib/platform-api.server");
+                  const result: any = await createProjectWithWebsite({
+                    workspaceId,
+                    externalCustomerId: lead.id,
+                    email,
+                    name: businessName,
+                    websiteName: `${businessName} demo`,
+                    personalizationTags: tags,
+                  });
+                  const projectId = result?.project?.id ?? result?.data?.projectId ?? "";
+                  const websiteId = result?.website?.id ?? result?.data?.websiteId ?? null;
+                  const subdomain = result?.website?.subdomain ?? result?.data?.subdomain ?? null;
+                  await supabaseAdmin.from("lead_platform_sites").insert({
+                    lead_id: lead.id,
+                    workspace_id: workspaceId,
+                    project_id: String(projectId),
+                    website_id: websiteId ? String(websiteId) : null,
+                    subdomain,
+                    personalization_tags: tags,
+                  });
+                }
+              }
+            } catch (e) {
+              console.error("auto demo provision failed", e);
+            }
+          }
+        }
+
         return Response.json({ status: "ok", classification, stage: nextStage });
+
       },
     },
   },

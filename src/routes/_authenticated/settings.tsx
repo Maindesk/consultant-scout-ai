@@ -278,18 +278,31 @@ function WorkspaceIntegrationsCard({ workspace }: { workspace: WorkspaceSummary 
             {workspace.has_webhook_secret ? (
               <Badge variant="outline" className="text-xs">saved</Badge>
             ) : (
-              <Badge variant="secondary" className="text-xs">not configured (Phase 3)</Badge>
+              <Badge variant="secondary" className="text-xs">not configured</Badge>
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            Used to verify incoming subscription_activated / renewed / expired webhooks so we can auto-close leads as won/lost with real MRR.
-            Webhook URL will be shown here once Phase 3 ships.
+            Paste this webhook URL into your Platform → Webhooks config, subscribe to
+            <code className="mx-1">subscription_activated / renewed / expired</code>, then paste the same signing secret both sides.
+            Incoming events auto-move leads to Won/Lost and record MRR.
           </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <Label className="text-xs">Signing secret {workspace.has_webhook_secret && <span className="text-muted-foreground">(replace to change)</span>}</Label>
-              <Input type="password" placeholder={workspace.has_webhook_secret ? "••••••••" : "paste secret"} value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} />
-            </div>
+          <div>
+            <Label className="text-xs">Webhook URL (copy into Platform)</Label>
+            <Input
+              readOnly
+              value={typeof window !== "undefined" ? `${window.location.origin}/api/public/webhooks/platform/${workspace.id}` : `/api/public/webhooks/platform/${workspace.id}`}
+              className="font-mono text-xs"
+              onFocus={(e) => e.currentTarget.select()}
+            />
+          </div>
+          <div>
+            <Label className="text-xs">Signing secret {workspace.has_webhook_secret && <span className="text-muted-foreground">(replace to change)</span>}</Label>
+            <Input
+              type="password"
+              placeholder={workspace.has_webhook_secret ? "••••••••" : "paste secret"}
+              value={webhookSecret}
+              onChange={(e) => setWebhookSecret(e.target.value)}
+            />
           </div>
           <Button
             size="sm"
@@ -304,6 +317,7 @@ function WorkspaceIntegrationsCard({ workspace }: { workspace: WorkspaceSummary 
             Save Webhook Secret
           </Button>
         </section>
+
       </CardContent>
     </Card>
   );

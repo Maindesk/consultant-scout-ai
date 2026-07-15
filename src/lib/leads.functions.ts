@@ -54,6 +54,15 @@ export const discoverLeads = createServerFn({ method: "POST" })
     const fc = getFirecrawl();
     const limit = Math.min(data.limit ?? 15, 30);
 
+    // Quota gate — check workspace lead budget before spending Firecrawl calls.
+    const { getActiveWorkspaceIdForUser, checkQuota, recordUsage } = await import("./quota.server");
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
+    if (workspaceId) {
+      const q = await checkQuota(workspaceId, "leads_discovered", 1);
+      if (!q.ok) throw new Error(q.message ?? "Lead quota exceeded");
+    }
+
+
     const techStack: PlatformName[] = (cfg.tech_stack ?? []) as PlatformName[];
     const platformHint = techStack[0] ?? null;
     const queries = buildPractitionerQueries({
@@ -142,8 +151,12 @@ export const discoverLeads = createServerFn({ method: "POST" })
         .maybeSingle();
       if (!error && row) inserted.push(row);
     }
+    if (workspaceId && inserted.length > 0) {
+      await recordUsage(workspaceId, { leads: inserted.length });
+    }
     return { discovered: inserted.length, rejected: rejected.length, sample_rejected: rejected.slice(0, 5) };
   });
+
 
 const EnrichmentSchema = z.object({
   business_summary: z.string(),
@@ -211,8 +224,15 @@ export const enrichLead = createServerFn({ method: "POST" })
     const { analyzeWebsite, summarizeSignalsForPrompt } = await import("./website-signals.server");
     const signals = await analyzeWebsite(lead.website, html);
 
+    const { getActiveWorkspaceIdForUser, checkQuota, recordUsage, estimateAiCredits } = await import("./quota.server");
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
+    if (workspaceId) {
+      const q = await checkQuota(workspaceId, "ai_credits", 5);
+      if (!q.ok) throw new Error(q.message ?? "AI credit quota exceeded");
+    }
+
     const gateway = getLovableGateway();
-    const { output } = await generateText({
+    const { output, usage } = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: EnrichmentSchema }),
       prompt: `Analyze this business website and extract structured intel. Find contact email if visible on the page.
@@ -228,6 +248,8 @@ Content:
 ${markdown.slice(0, 15000) || "(no content)"}
 `,
     });
+    if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(usage?.totalTokens ?? 0) });
+
 
     await context.supabase.from("lead_enrichments").upsert(
       {
@@ -301,11 +323,24 @@ export const listPipeline = createServerFn({ method: "GET" })
         .maybeSingle(),
     ]);
     if (error) throw error;
+
+    // Batch-fetch demo site info for the returned leads.
+    const leadIds = (leads ?? []).map((l) => l.id);
+    let demoByLead: Record<string, boolean> = {};
+    if (leadIds.length) {
+      const { data: sites } = await context.supabase
+        .from("lead_platform_sites")
+        .select("lead_id")
+        .in("lead_id", leadIds);
+      demoByLead = Object.fromEntries((sites ?? []).map((s) => [s.lead_id, true]));
+    }
+
     return {
-      leads: leads ?? [],
+      leads: (leads ?? []).map((l) => ({ ...l, has_demo: !!demoByLead[l.id] })),
       avg_deal_value: Number(profile?.avg_deal_value ?? 0),
       avg_close_rate: Number(profile?.avg_close_rate ?? 0.1),
       currency: profile?.currency ?? "USD",
     };
   });
+
 

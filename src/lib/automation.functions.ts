@@ -21,6 +21,8 @@ export const saveAutomationSettings = createServerFn({ method: "POST" })
     auto_enrich: boolean;
     auto_draft: boolean;
     active_search_config_id: string | null;
+    auto_provision_demo?: boolean;
+    auto_insert_sso_in_email3?: boolean;
   }) => d)
   .handler(async ({ context, data }) => {
     const { data: existing } = await context.supabase
