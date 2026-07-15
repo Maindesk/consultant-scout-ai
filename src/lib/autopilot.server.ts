@@ -13,6 +13,8 @@ import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
 import { detectPlatform } from "./platform-detect.server";
+import { isJunkLead, buildPractitionerQueries } from "./lead-filters.server";
+import type { PlatformName } from "./platforms";
 
 const EnrichmentSchema = z.object({
   business_summary: z.string(),
