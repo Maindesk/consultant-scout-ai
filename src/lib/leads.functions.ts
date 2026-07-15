@@ -151,8 +151,12 @@ export const discoverLeads = createServerFn({ method: "POST" })
         .maybeSingle();
       if (!error && row) inserted.push(row);
     }
+    if (workspaceId && inserted.length > 0) {
+      await recordUsage(workspaceId, { leads: inserted.length });
+    }
     return { discovered: inserted.length, rejected: rejected.length, sample_rejected: rejected.slice(0, 5) };
   });
+
 
 const EnrichmentSchema = z.object({
   business_summary: z.string(),
@@ -220,8 +224,15 @@ export const enrichLead = createServerFn({ method: "POST" })
     const { analyzeWebsite, summarizeSignalsForPrompt } = await import("./website-signals.server");
     const signals = await analyzeWebsite(lead.website, html);
 
+    const { getActiveWorkspaceIdForUser, checkQuota, recordUsage, estimateAiCredits } = await import("./quota.server");
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
+    if (workspaceId) {
+      const q = await checkQuota(workspaceId, "ai_credits", 5);
+      if (!q.ok) throw new Error(q.message ?? "AI credit quota exceeded");
+    }
+
     const gateway = getLovableGateway();
-    const { output } = await generateText({
+    const { output, usage } = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: EnrichmentSchema }),
       prompt: `Analyze this business website and extract structured intel. Find contact email if visible on the page.
@@ -237,6 +248,8 @@ Content:
 ${markdown.slice(0, 15000) || "(no content)"}
 `,
     });
+    if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(usage?.totalTokens ?? 0) });
+
 
     await context.supabase.from("lead_enrichments").upsert(
       {

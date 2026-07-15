@@ -43,10 +43,17 @@ export const draftEmailsForLead = createServerFn({ method: "POST" })
     const tone = data.tone ?? "professional";
     const goal = data.goal ?? (bp as any).default_email_goal ?? "book_meeting";
     const { goalFraming, EMAIL_GOAL_LABELS } = await import("./email-goals");
+    const { getActiveWorkspaceIdForUser, checkQuota, recordUsage, estimateAiCredits } = await import("./quota.server");
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
+    if (workspaceId) {
+      const q = await checkQuota(workspaceId, "ai_credits", 10);
+      if (!q.ok) throw new Error(q.message ?? "AI credit quota exceeded");
+    }
+
     const gateway = getLovableGateway();
     const tools = (enrichment as any)?.website_signals?.tools ?? [];
     const gaps = (enrichment as any)?.website_signals?.gaps ?? [];
-    const { output } = await generateText({
+    const { output, usage } = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: SequenceSchema }),
       prompt: `You are writing a highly personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
@@ -80,12 +87,14 @@ Write a 4-email sequence: initial + 3 follow-ups.
 - The pitch is a PLATFORM SWITCH, not a feature. Never sell one capability in isolation.
 - Email 1: name 2-3 specific 3rd-party tools you detected on their site, add them up as "stack sprawl" (fragmented brand + monthly cost + slower site), and position our platform as the consolidated on-brand replacement. Reference the detected native capabilities to show the switch is a superset, not a downgrade.
 - Email 2: quantify the drag — overlapping subscriptions, brand inconsistency across embedded widgets, perf hit; hint at what their site could look/feel like unified.
-- Email 3: proof / short story of a similar business that moved off ${lead.platform ?? "a similar builder"} and consolidated, or address the obvious "switching is painful" objection (migration is handled).
+- Email 3: proof / short story of a similar business that moved off ${lead.platform ?? "a similar builder"} and consolidated, or address the obvious "switching is painful" objection (migration is handled). If a personalized demo edit link will be inserted, hint that a preview site tailored to their brand is ready to explore (do NOT invent a URL — the placeholder {{DEMO_LINK}} will be substituted at send time).
 - Email 4: soft break-up matching the campaign goal.
 - If no tools were detected, lead with the gap + platform-limitation angle instead of naming tools.
 - Each email under 130 words. Day offsets: 0, 3, 7, 14. Subject under 60 chars. CTA in every email matches the campaign goal above.`,
 
     });
+    if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(usage?.totalTokens ?? 0) });
+
 
     // Delete previous pending drafts
     await context.supabase
