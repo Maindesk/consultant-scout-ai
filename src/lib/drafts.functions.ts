@@ -30,7 +30,7 @@ export const listPendingDrafts = createServerFn({ method: "GET" })
 
 export const draftEmailsForLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { lead_id: string; tone?: string }) => d)
+  .inputValidator((d: { lead_id: string; tone?: string; goal?: string }) => d)
   .handler(async ({ context, data }) => {
     const [{ data: lead }, { data: enrichment }, { data: bp }] = await Promise.all([
       context.supabase.from("leads").select("*").eq("id", data.lead_id).eq("user_id", context.userId).single(),
@@ -41,7 +41,11 @@ export const draftEmailsForLead = createServerFn({ method: "POST" })
     if (!bp) throw new Error("Complete your business profile first");
 
     const tone = data.tone ?? "professional";
+    const goal = data.goal ?? (bp as any).default_email_goal ?? "book_meeting";
+    const { goalFraming, EMAIL_GOAL_LABELS } = await import("./email-goals");
     const gateway = getLovableGateway();
+    const tools = (enrichment as any)?.website_signals?.tools ?? [];
+    const gaps = (enrichment as any)?.website_signals?.gaps ?? [];
     const { output } = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: SequenceSchema }),
@@ -51,6 +55,8 @@ Sender business:
 - Summary: ${bp.ai_summary ?? bp.offer_description ?? ""}
 - Value proposition: ${bp.value_proposition ?? ""}
 - Ideal client: ${bp.ideal_client ?? ""}
+- Product capabilities (features WE offer natively — use these as alternatives to the prospect's embedded 3rd-party tools):
+${(bp as any).product_capabilities ?? "(none provided)"}
 
 Prospect:
 - Name/business: ${lead.business_name ?? lead.domain}
@@ -59,18 +65,20 @@ Prospect:
 - Their offer: ${enrichment?.offer ?? ""}
 - Their audience: ${enrichment?.target_audience ?? ""}
 - Pain points detected: ${JSON.stringify(enrichment?.pain_points ?? [])}
-- Website tech signals: ${JSON.stringify((enrichment as any)?.website_signals?.tools ?? [])}
-- Website gaps: ${JSON.stringify((enrichment as any)?.website_signals?.gaps ?? [])}
+- Embedded 3rd-party tools on their site: ${JSON.stringify(tools)}
+- Website gaps: ${JSON.stringify(gaps)}
 - Page perf: ${JSON.stringify((enrichment as any)?.website_signals?.performance ?? {})}
+
+Campaign goal: ${EMAIL_GOAL_LABELS[goal as keyof typeof EMAIL_GOAL_LABELS] ?? goal}
+${goalFraming(goal)}
 
 Write a 4-email sequence: initial + 3 follow-ups.
 - Tone: ${tone}
-- Reference ONE specific, concrete detail from their business OR a detected tool (e.g. "I saw you use Calendly for discovery calls…") OR a gap (e.g. "noticed no lead magnet on your site")
-- Tie their pain point to the sender's value prop
-- Keep each email under 120 words
-- Day offsets: 0, 3, 7, 14
-- Provide a short subject (under 60 chars) for each`,
-
+- The FIRST email MUST reference ONE specific detected tool on their site AND pitch our matching product capability as the native alternative. Example pattern: "I noticed you embed Calendly on your booking page — our platform ships booking & appointments right out of the box, which keeps your site fully on-brand and strengthens brand perception for new visitors."
+- If no relevant tool matches a capability, reference a website gap instead.
+- Tie their pain point to the sender's value prop.
+- Each email under 120 words. Day offsets: 0, 3, 7, 14. Subject under 60 chars.
+- CTA in every email must match the campaign goal above.`,
     });
 
     // Delete previous pending drafts
