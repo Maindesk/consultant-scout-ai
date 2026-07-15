@@ -170,7 +170,7 @@ export const updateWorkspaceSettings = createServerFn({ method: "POST" })
 
     const { error } = await context.supabase
       .from("workspaces")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.workspace_id);
     if (error) throw error;
     return { ok: true };
