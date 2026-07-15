@@ -59,14 +59,18 @@ Prospect:
 - Their offer: ${enrichment?.offer ?? ""}
 - Their audience: ${enrichment?.target_audience ?? ""}
 - Pain points detected: ${JSON.stringify(enrichment?.pain_points ?? [])}
+- Website tech signals: ${JSON.stringify((enrichment as any)?.website_signals?.tools ?? [])}
+- Website gaps: ${JSON.stringify((enrichment as any)?.website_signals?.gaps ?? [])}
+- Page perf: ${JSON.stringify((enrichment as any)?.website_signals?.performance ?? {})}
 
 Write a 4-email sequence: initial + 3 follow-ups.
 - Tone: ${tone}
-- Reference ONE specific detail from their business in the initial email
+- Reference ONE specific, concrete detail from their business OR a detected tool (e.g. "I saw you use Calendly for discovery calls…") OR a gap (e.g. "noticed no lead magnet on your site")
 - Tie their pain point to the sender's value prop
 - Keep each email under 120 words
 - Day offsets: 0, 3, 7, 14
 - Provide a short subject (under 60 chars) for each`,
+
     });
 
     // Delete previous pending drafts
