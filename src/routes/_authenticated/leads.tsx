@@ -319,9 +319,18 @@ function WebsiteSignalsPanel({ signals }: { signals: any }) {
     if (ms < 2000) return "text-amber-600";
     return "text-red-600";
   };
+  const pagesScraped: number | undefined = signals?.pages_scraped;
+  const pageUrls: string[] = signals?.page_urls ?? [];
   return (
     <div className="space-y-3 border-t pt-3">
-      <div className="text-xs font-medium text-muted-foreground">Website analysis</div>
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium text-muted-foreground">Website analysis</div>
+        {pagesScraped ? (
+          <span className="text-[10px] text-muted-foreground" title={pageUrls.join("\n")}>
+            {pagesScraped} page{pagesScraped === 1 ? "" : "s"} scanned
+          </span>
+        ) : null}
+      </div>
       {perf && (
         <div className="grid grid-cols-3 gap-2 text-xs">
           <div><div className="text-muted-foreground">TTFB</div><div className={perfBadge(perf.ttfb_ms)}>{perf.ttfb_ms ?? "?"} ms</div></div>
