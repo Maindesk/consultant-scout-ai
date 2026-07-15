@@ -52,7 +52,7 @@ export const discoverLeads = createServerFn({ method: "POST" })
     if (cErr || !cfg) throw new Error("Search config not found");
 
     const fc = getFirecrawl();
-    const limit = Math.min(data.limit ?? 15, 30);
+    const limit = Math.min(Math.max(data.limit ?? 15, 1), 100);
 
     // Quota gate — check workspace lead budget before spending Firecrawl calls.
     const { getActiveWorkspaceIdForUser, checkQuota, recordUsage } = await import("./quota.server");
