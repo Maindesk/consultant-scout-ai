@@ -104,7 +104,7 @@ function AuthedShell() {
           <img src={logoAsset.url} alt="PixelOutreach" className="w-8 h-8 rounded-lg shadow-brand" />
           <div>
             <div className="font-semibold text-[15px] tracking-tight leading-none">PixelOutreach</div>
-            <div className="text-[11px] text-muted-foreground mt-1">AI outbound platform</div>
+            <div className="text-[11px] text-muted-foreground mt-1">Users for your white-label</div>
           </div>
         </Link>
 
