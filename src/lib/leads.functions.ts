@@ -323,11 +323,24 @@ export const listPipeline = createServerFn({ method: "GET" })
         .maybeSingle(),
     ]);
     if (error) throw error;
+
+    // Batch-fetch demo site info for the returned leads.
+    const leadIds = (leads ?? []).map((l) => l.id);
+    let demoByLead: Record<string, boolean> = {};
+    if (leadIds.length) {
+      const { data: sites } = await context.supabase
+        .from("lead_platform_sites")
+        .select("lead_id")
+        .in("lead_id", leadIds);
+      demoByLead = Object.fromEntries((sites ?? []).map((s) => [s.lead_id, true]));
+    }
+
     return {
-      leads: leads ?? [],
+      leads: (leads ?? []).map((l) => ({ ...l, has_demo: !!demoByLead[l.id] })),
       avg_deal_value: Number(profile?.avg_deal_value ?? 0),
       avg_close_rate: Number(profile?.avg_close_rate ?? 0.1),
       currency: profile?.currency ?? "USD",
     };
   });
+
 

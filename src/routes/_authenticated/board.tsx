@@ -29,7 +29,9 @@ type PipelineLead = {
   niche: string | null;
   ai_stage_reason: string | null;
   email: string | null;
+  has_demo?: boolean;
 };
+
 
 function BoardPage() {
   const listFn = useServerFn(listPipeline);
@@ -154,7 +156,13 @@ function BoardPage() {
                       {l.niche && (
                         <span className="text-[10px] text-muted-foreground truncate">{l.niche}</span>
                       )}
+                      {l.has_demo && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-700">
+                          demo ready
+                        </span>
+                      )}
                     </div>
+
                     {l.ai_stage_reason && (
                       <div className="text-[10px] text-indigo-600 mt-1 line-clamp-2 border-l-2 border-indigo-500 pl-1.5">
                         {l.ai_stage_reason}

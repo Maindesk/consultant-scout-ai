@@ -40,6 +40,8 @@ function Dashboard() {
     auto_enrich: true,
     auto_draft: true,
     active_search_config_id: null as string | null,
+    auto_provision_demo: false,
+    auto_insert_sso_in_email3: false,
   });
 
   useEffect(() => {
@@ -50,9 +52,12 @@ function Dashboard() {
         auto_enrich: auto.auto_enrich,
         auto_draft: auto.auto_draft,
         active_search_config_id: auto.active_search_config_id,
+        auto_provision_demo: (auto as any).auto_provision_demo ?? false,
+        auto_insert_sso_in_email3: (auto as any).auto_insert_sso_in_email3 ?? false,
       });
     }
   }, [auto]);
+
 
   const saveMut = useMutation({
     mutationFn: (patch: typeof form) => saveAuto({ data: patch }),
@@ -160,8 +165,41 @@ function Dashboard() {
               Last run: {new Date(auto.last_run_at).toLocaleString()} — {auto.last_run_summary}
             </div>
           )}
+
+          <div className="pt-2 border-t space-y-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Demo site automation</div>
+            <label className="flex items-start gap-3 text-sm">
+              <Switch
+                checked={form.auto_provision_demo}
+                onCheckedChange={(v) => {
+                  const next = { ...form, auto_provision_demo: v };
+                  setForm(next);
+                  saveMut.mutate(next);
+                }}
+              />
+              <div>
+                <div className="font-medium">Auto-provision demo site on interested reply</div>
+                <div className="text-xs text-muted-foreground">When a lead replies as interested, spin up a personalized preview site on your platform for them.</div>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 text-sm">
+              <Switch
+                checked={form.auto_insert_sso_in_email3}
+                onCheckedChange={(v) => {
+                  const next = { ...form, auto_insert_sso_in_email3: v };
+                  setForm(next);
+                  saveMut.mutate(next);
+                }}
+              />
+              <div>
+                <div className="font-medium">Auto-insert one-click edit link in follow-up #3</div>
+                <div className="text-xs text-muted-foreground">Email #3 gets a fresh 15-min SSO link into the lead's personalized demo. Auto-provisions the site if the toggle above is also on.</div>
+              </div>
+            </label>
+          </div>
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base">Get started</CardTitle></CardHeader>
