@@ -133,11 +133,12 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
               user_id: item.user_id,
               lead_id: item.lead_id,
               draft_id: draft.id,
-              subject: draft.subject,
-              body: draft.body,
+              subject,
+              body: bodyText,
               provider_message_id: message_id,
               status: "sent",
             });
+
 
             await supabaseAdmin
               .from("outbound_queue")
@@ -177,3 +178,94 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
     },
   },
 });
+
+/**
+ * Ensures the lead has a demo site on the workspace's WL platform and
+ * mints a fresh 15-minute SSO edit URL. Returns null if the workspace
+ * has no Platform API creds or provisioning fails.
+ */
+async function ensureDemoSiteAndSsoLink(input: {
+  userId: string;
+  workspaceId: string;
+  leadId: string;
+  autoProvision: boolean;
+}): Promise<string | null> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: ws } = await supabaseAdmin
+    .from("workspaces")
+    .select("platform_wl_domain, platform_client_key_ciphertext")
+    .eq("id", input.workspaceId)
+    .maybeSingle();
+  if (!ws?.platform_wl_domain || !ws.platform_client_key_ciphertext) return null;
+
+  let { data: site } = await supabaseAdmin
+    .from("lead_platform_sites")
+    .select("*")
+    .eq("lead_id", input.leadId)
+    .maybeSingle();
+
+  if (!site && input.autoProvision) {
+    const [{ data: lead }, { data: enrichment }] = await Promise.all([
+      supabaseAdmin.from("leads").select("*").eq("id", input.leadId).maybeSingle(),
+      supabaseAdmin.from("lead_enrichments").select("*").eq("lead_id", input.leadId).maybeSingle(),
+    ]);
+    if (!lead) return null;
+    const businessName = lead.business_name ?? lead.domain ?? "Prospect";
+    const email = lead.email ?? `demo+${lead.id}@example.com`;
+    const tags: Record<string, string> = {
+      business_name: businessName,
+      offer: (enrichment?.offer ?? "").slice(0, 200),
+      audience: (enrichment?.target_audience ?? "").slice(0, 200),
+      brand_color: ((enrichment as any)?.website_signals?.brand_color ?? "") as string,
+    };
+    try {
+      const { createProjectWithWebsite } = await import("@/lib/platform-api.server");
+      const result: any = await createProjectWithWebsite({
+        workspaceId: input.workspaceId,
+        externalCustomerId: lead.id,
+        email,
+        name: businessName,
+        websiteName: `${businessName} demo`,
+        personalizationTags: tags,
+      });
+      const projectId = result?.project?.id ?? result?.data?.projectId ?? "";
+      const websiteId = result?.website?.id ?? result?.data?.websiteId ?? null;
+      const subdomain = result?.website?.subdomain ?? result?.data?.subdomain ?? null;
+      const { data: row } = await supabaseAdmin
+        .from("lead_platform_sites")
+        .insert({
+          lead_id: lead.id,
+          workspace_id: input.workspaceId,
+          project_id: String(projectId),
+          website_id: websiteId ? String(websiteId) : null,
+          subdomain,
+          personalization_tags: tags,
+        })
+        .select()
+        .single();
+      site = row ?? null;
+    } catch (e) {
+      console.error("auto-provision failed", e);
+      return null;
+    }
+  }
+
+  if (!site) return null;
+
+  try {
+    const { createSsoSession } = await import("@/lib/platform-api.server");
+    const sso: any = await createSsoSession(site.workspace_id, input.userId, site.project_id);
+    const url: string | null = sso?.accessUrl ?? sso?.url ?? sso?.data?.accessUrl ?? null;
+    if (url) {
+      await supabaseAdmin
+        .from("lead_platform_sites")
+        .update({ edit_sso_url: url, sso_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString() })
+        .eq("id", site.id);
+    }
+    return url;
+  } catch (e) {
+    console.error("SSO mint failed", e);
+    return null;
+  }
+}
+
