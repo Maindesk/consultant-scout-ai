@@ -83,7 +83,7 @@ function AuthedShell() {
   });
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const allItems = navGroups.flatMap((g) => g.items);
+  const allItems: { to: string; label: string }[] = navGroups.flatMap((g) => g.items.map((i) => ({ to: i.to, label: i.label })));
   const active = allItems.find((i) => pathname.startsWith(i.to));
   const pageTitle = active?.label ?? (pathname.startsWith("/admin") ? "Platform admin" : "PixelOutreach");
 
