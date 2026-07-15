@@ -186,8 +186,12 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
                       </ul>
                     </div>
                   )}
+                  {(data.enrichment as any).website_signals && (
+                    <WebsiteSignalsPanel signals={(data.enrichment as any).website_signals} />
+                  )}
                 </>
               )}
+
               {data.drafts.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-2">Drafted emails</div>
