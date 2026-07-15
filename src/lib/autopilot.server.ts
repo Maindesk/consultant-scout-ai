@@ -87,9 +87,21 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
     .eq("user_id", userId)
     .maybeSingle();
 
+  const { getActiveWorkspaceIdForUser, checkQuota, recordUsage, estimateAiCredits } = await import("./quota.server");
+  const workspaceId = await getActiveWorkspaceIdForUser(userId);
+
   const target = Math.min(settings.daily_lead_target ?? 10, 50);
   const fc = getFirecrawl();
   const gateway = getLovableGateway();
+
+  if (workspaceId) {
+    const leadQuota = await checkQuota(workspaceId, "leads_discovered", target);
+    if (!leadQuota.ok) {
+      result.errors.push(leadQuota.message ?? "Lead quota exceeded");
+      return result;
+    }
+  }
+
 
   // 1. Discover — practitioner-focused queries + junk/platform filtering
   const techStack: PlatformName[] = (cfg.tech_stack ?? []) as PlatformName[];
