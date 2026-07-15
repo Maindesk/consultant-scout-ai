@@ -61,7 +61,10 @@ export const draftEmailsForLead = createServerFn({ method: "POST" })
     const gateway = getLovableGateway();
     const tools = (enrichment as any)?.website_signals?.tools ?? [];
     const gaps = (enrichment as any)?.website_signals?.gaps ?? [];
-    const { output, usage } = await generateText({
+    let output: z.infer<typeof SequenceSchema>;
+    let usage: { totalTokens?: number } | undefined;
+    try {
+    const r = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: SequenceSchema }),
       prompt: `You are writing a highly personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
