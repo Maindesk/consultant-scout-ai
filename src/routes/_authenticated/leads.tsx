@@ -186,8 +186,12 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
                       </ul>
                     </div>
                   )}
+                  {(data.enrichment as any).website_signals && (
+                    <WebsiteSignalsPanel signals={(data.enrichment as any).website_signals} />
+                  )}
                 </>
               )}
+
               {data.drafts.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-2">Drafted emails</div>
@@ -219,3 +223,54 @@ function Section({ title, body }: { title: string; body?: string | null }) {
     </div>
   );
 }
+
+function WebsiteSignalsPanel({ signals }: { signals: any }) {
+  const tools: Array<{ name: string; category: string }> = signals?.tools ?? [];
+  const gaps: string[] = signals?.gaps ?? [];
+  const perf = signals?.performance ?? null;
+  const page = signals?.page ?? null;
+  const perfBadge = (ms: number | null | undefined) => {
+    if (ms == null) return "text-muted-foreground";
+    if (ms < 800) return "text-green-600";
+    if (ms < 2000) return "text-amber-600";
+    return "text-red-600";
+  };
+  return (
+    <div className="space-y-3 border-t pt-3">
+      <div className="text-xs font-medium text-muted-foreground">Website analysis</div>
+      {perf && (
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <div><div className="text-muted-foreground">TTFB</div><div className={perfBadge(perf.ttfb_ms)}>{perf.ttfb_ms ?? "?"} ms</div></div>
+          <div><div className="text-muted-foreground">Total</div><div className={perfBadge(perf.total_ms)}>{perf.total_ms ?? "?"} ms</div></div>
+          <div><div className="text-muted-foreground">Size</div><div>{perf.bytes ? Math.round(perf.bytes / 1024) + " KB" : "?"}</div></div>
+        </div>
+      )}
+      {page && (
+        <div className="text-xs text-muted-foreground">
+          {page.word_count} words · H1: {page.has_h1 ? "yes" : "no"} · OG image: {page.has_og_image ? "yes" : "no"} · Mobile viewport: {page.has_viewport ? "yes" : "no"}
+        </div>
+      )}
+      {tools.length > 0 && (
+        <div>
+          <div className="text-xs font-medium text-muted-foreground mb-1">Embedded tools ({tools.length})</div>
+          <div className="flex flex-wrap gap-1">
+            {tools.map((t) => (
+              <span key={t.name} className="text-xs border rounded px-2 py-0.5 bg-muted/50" title={t.category}>
+                {t.name} <span className="text-muted-foreground">· {t.category}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {gaps.length > 0 && (
+        <div>
+          <div className="text-xs font-medium text-muted-foreground mb-1">Gaps / opportunities</div>
+          <ul className="text-xs list-disc pl-4 space-y-0.5">
+            {gaps.map((g, i) => <li key={i}>{g}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+

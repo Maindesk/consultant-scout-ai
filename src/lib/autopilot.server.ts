@@ -205,6 +205,9 @@ Content:
 ${md.slice(0, 15000) || "(no content)"}`,
       });
 
+      const { analyzeWebsite } = await import("./website-signals.server");
+      const signals = await analyzeWebsite(lead.website, html);
+
       await supabaseAdmin.from("lead_enrichments").upsert(
         {
           lead_id: lead.id,
@@ -216,16 +219,18 @@ ${md.slice(0, 15000) || "(no content)"}`,
           funnel_presence: output.funnel_presence,
           pain_points: output.pain_points,
           raw_markdown: md.slice(0, 20000),
+          website_signals: signals as any,
         },
         { onConflict: "lead_id" },
       );
+
 
       await supabaseAdmin
         .from("leads")
         .update({ status: "enriched", platform, email: output.contact_email ?? lead.email })
         .eq("id", lead.id);
 
-      enrichedLeads.push({ ...lead, platform, enrichment: output });
+      enrichedLeads.push({ ...lead, platform, enrichment: output, signals });
       result.enriched += 1;
     } catch (e) {
       result.errors.push(`enrich ${lead.website}: ${String(e)}`);
@@ -255,8 +260,12 @@ Prospect:
 - Their offer: ${lead.enrichment.offer}
 - Audience: ${lead.enrichment.target_audience}
 - Pain points: ${JSON.stringify(lead.enrichment.pain_points)}
+- Tools detected on site: ${JSON.stringify(lead.signals?.tools ?? [])}
+- Site gaps: ${JSON.stringify(lead.signals?.gaps ?? [])}
+- Perf: ${JSON.stringify(lead.signals?.performance ?? {})}
 
-4-email sequence: initial + 3 follow-ups. Tone: professional. Reference ONE specific detail. Under 120 words each. Day offsets: 0, 3, 7, 14. Subject under 60 chars.`,
+4-email sequence: initial + 3 follow-ups. Tone: professional. Reference ONE specific detail — prefer a detected tool ("saw you use Calendly…") or a gap ("no lead magnet on your site"). Under 120 words each. Day offsets: 0, 3, 7, 14. Subject under 60 chars.`,
+
       });
 
       await supabaseAdmin

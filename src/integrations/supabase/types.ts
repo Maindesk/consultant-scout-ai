@@ -334,6 +334,7 @@ export type Database = {
           raw_markdown: string | null
           target_audience: string | null
           user_id: string
+          website_signals: Json | null
         }
         Insert: {
           business_summary?: string | null
@@ -347,6 +348,7 @@ export type Database = {
           raw_markdown?: string | null
           target_audience?: string | null
           user_id: string
+          website_signals?: Json | null
         }
         Update: {
           business_summary?: string | null
@@ -360,6 +362,7 @@ export type Database = {
           raw_markdown?: string | null
           target_audience?: string | null
           user_id?: string
+          website_signals?: Json | null
         }
         Relationships: [
           {

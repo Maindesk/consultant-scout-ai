@@ -208,6 +208,9 @@ export const enrichLead = createServerFn({ method: "POST" })
       }
     }
 
+    const { analyzeWebsite, summarizeSignalsForPrompt } = await import("./website-signals.server");
+    const signals = await analyzeWebsite(lead.website, html);
+
     const gateway = getLovableGateway();
     const { output } = await generateText({
       model: gateway(CHAT_MODEL),
@@ -217,6 +220,9 @@ export const enrichLead = createServerFn({ method: "POST" })
 URL: ${lead.website}
 Business name: ${lead.business_name ?? "unknown"}
 Detected platform: ${platform ?? "unknown"}
+
+Website signals (embedded 3rd-party tools, page metrics, perf, gaps):
+${summarizeSignalsForPrompt(signals)}
 
 Content:
 ${markdown.slice(0, 15000) || "(no content)"}
@@ -234,9 +240,11 @@ ${markdown.slice(0, 15000) || "(no content)"}
         funnel_presence: output.funnel_presence,
         pain_points: output.pain_points,
         raw_markdown: markdown.slice(0, 20000),
+        website_signals: signals as any,
       },
       { onConflict: "lead_id" },
     );
+
 
     await context.supabase
       .from("leads")
