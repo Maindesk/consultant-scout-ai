@@ -181,6 +181,10 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
     if (row) newLeads.push(row);
   }
   result.discovered = newLeads.length;
+  if (workspaceId && newLeads.length > 0) {
+    await recordUsage(workspaceId, { leads: newLeads.length });
+  }
+
 
   // 2. Enrich
   const techFilter: string[] = cfg.tech_stack ?? [];
@@ -204,7 +208,7 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
         continue;
       }
 
-      const { output } = await generateText({
+      const { output, usage: enrichUsage } = await generateText({
         model: gateway(CHAT_MODEL),
         output: Output.object({ schema: EnrichmentSchema }),
         prompt: `Analyze this business's website and extract structured intel.
@@ -216,6 +220,8 @@ Platform: ${platform ?? "unknown"}
 Content:
 ${md.slice(0, 15000) || "(no content)"}`,
       });
+      if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(enrichUsage?.totalTokens ?? 0) });
+
 
       const { analyzeWebsite } = await import("./website-signals.server");
       const signals = await analyzeWebsite(lead.website, html);
