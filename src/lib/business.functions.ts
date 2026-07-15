@@ -25,6 +25,9 @@ export const saveBusinessProfile = createServerFn({ method: "POST" })
     sender_name?: string;
     sender_email?: string;
     daily_send_cap?: number;
+    avg_deal_value?: number;
+    avg_close_rate?: number;
+    currency?: string;
   }) => d)
   .handler(async ({ context, data }) => {
     const { data: existing } = await context.supabase

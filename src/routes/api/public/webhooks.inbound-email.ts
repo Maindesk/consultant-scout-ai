@@ -73,6 +73,8 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
         const { classifyAndSuggest } = await import("@/lib/reply-ai.server");
         let classification = "unknown";
         let suggested_reply = "";
+        let suggested_stage: string | null = null;
+        let stage_reason: string | null = null;
         try {
           const out = await classifyAndSuggest({
             userId: lead.user_id,
@@ -82,6 +84,8 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
           });
           classification = out.classification;
           suggested_reply = out.suggested_reply;
+          suggested_stage = out.suggested_stage;
+          stage_reason = out.stage_reason;
         } catch (e) {
           console.error("Classifier failed", e);
         }
@@ -105,12 +109,18 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
           .eq("lead_id", lead.id)
           .eq("status", "queued");
 
+        // Apply AI-suggested stage; fall back to "replied"
+        const nextStage = suggested_stage ?? "replied";
         await supabaseAdmin
           .from("leads")
-          .update({ status: "replied" })
+          .update({
+            status: nextStage,
+            ai_stage_reason: stage_reason,
+            stage_updated_at: new Date().toISOString(),
+          })
           .eq("id", lead.id);
 
-        return Response.json({ status: "ok", classification });
+        return Response.json({ status: "ok", classification, stage: nextStage });
       },
     },
   },

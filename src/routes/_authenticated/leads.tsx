@@ -19,11 +19,31 @@ const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-500/10 text-blue-600",
   enriched: "bg-purple-500/10 text-purple-600",
   drafted: "bg-amber-500/10 text-amber-600",
+  contacted: "bg-cyan-500/10 text-cyan-600",
   approved: "bg-green-500/10 text-green-600",
   sent: "bg-emerald-500/10 text-emerald-600",
   replied: "bg-pink-500/10 text-pink-600",
+  in_progress: "bg-indigo-500/10 text-indigo-600",
+  won: "bg-green-500/10 text-green-700",
+  lost: "bg-gray-500/10 text-gray-600",
   rejected: "bg-gray-500/10 text-gray-600",
 };
+
+function ConfidenceBadge({ platform, confidence }: { platform?: string | null; confidence?: number | null }) {
+  if (!platform) return <span className="text-xs text-muted-foreground">—</span>;
+  const pct = Math.round(((confidence ?? 0) as number) * 100);
+  const tone =
+    pct >= 66 ? "bg-green-500/10 text-green-700 border-green-500/30"
+    : pct >= 33 ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
+    : "bg-gray-500/10 text-gray-600 border-gray-500/30";
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border ${tone}`}>
+      <span className="font-medium">{platform}</span>
+      <span className="opacity-70">·</span>
+      <span>{pct}%</span>
+    </span>
+  );
+}
 
 function LeadsPage() {
   const qc = useQueryClient();
@@ -62,6 +82,7 @@ function LeadsPage() {
             <tr className="text-left">
               <th className="px-3 py-2 font-medium">Business</th>
               <th className="px-3 py-2 font-medium">Domain</th>
+              <th className="px-3 py-2 font-medium">Platform</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium text-right">Actions</th>
             </tr>
@@ -75,6 +96,7 @@ function LeadsPage() {
                   </button>
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">{l.domain}</td>
+                <td className="px-3 py-2"><ConfidenceBadge platform={l.platform} confidence={(l as any).platform_confidence} /></td>
                 <td className="px-3 py-2"><Badge className={STATUS_COLORS[l.status] ?? ""} variant="secondary">{l.status}</Badge></td>
                 <td className="px-3 py-2 text-right space-x-2">
                   {l.status === "new" && (
@@ -122,6 +144,29 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
             </SheetHeader>
             <div className="mt-4 space-y-4 text-sm">
               {data.lead.email && <div><span className="text-muted-foreground">Email:</span> {data.lead.email}</div>}
+              {data.lead.platform && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-1">Detected platform</div>
+                  <div className="flex flex-wrap gap-1">
+                    <ConfidenceBadge platform={data.lead.platform} confidence={(data.lead as any).platform_confidence} />
+                    {Array.isArray((data.lead as any).platform_alternatives) &&
+                      (data.lead as any).platform_alternatives.slice(0, 4).map((a: any) => (
+                        <ConfidenceBadge key={a.platform} platform={a.platform} confidence={a.confidence} />
+                      ))}
+                  </div>
+                  {(data.lead as any).platform_matches != null && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {(data.lead as any).platform_matches} signature match{(data.lead as any).platform_matches === 1 ? "" : "es"} found in HTML
+                    </div>
+                  )}
+                </div>
+              )}
+              {(data.lead as any).ai_stage_reason && (
+                <div className="border-l-2 border-indigo-500 pl-3">
+                  <div className="text-xs font-medium text-muted-foreground">AI stage decision</div>
+                  <div className="text-xs">{(data.lead as any).ai_stage_reason}</div>
+                </div>
+              )}
               {data.enrichment && (
                 <>
                   <Section title="Summary" body={data.enrichment.business_summary} />

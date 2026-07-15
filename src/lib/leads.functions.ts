@@ -4,9 +4,10 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
-import { detectPlatform } from "./platform-detect.server";
+import { detectPlatform, detectPlatformDetailed } from "./platform-detect.server";
 import { isJunkLead, buildPractitionerQueries } from "./lead-filters.server";
 import type { PlatformName } from "./platforms";
+import { PIPELINE_STAGES, isLeadStage, type LeadStage } from "./pipeline";
 
 export const listLeads = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -102,14 +103,14 @@ export const discoverLeads = createServerFn({ method: "POST" })
       }
 
       // If user requires a specific platform, verify BEFORE saving as a lead.
-      let verifiedPlatform: PlatformName | null = null;
+      let detection = { platform: null as PlatformName | null, confidence: 0, matches: 0, alternatives: [] as any[] };
       if (techStack.length > 0) {
         try {
           const scrape: any = await fc.scrape(f.url, { formats: ["html"], onlyMainContent: false });
           const html = scrape?.html ?? scrape?.rawHtml ?? "";
-          verifiedPlatform = detectPlatform(html);
-          if (!verifiedPlatform || !techStack.includes(verifiedPlatform)) {
-            rejected.push({ url: f.url, reason: `platform mismatch (${verifiedPlatform ?? "unknown"})` });
+          detection = detectPlatformDetailed(html);
+          if (!detection.platform || !techStack.includes(detection.platform)) {
+            rejected.push({ url: f.url, reason: `platform mismatch (${detection.platform ?? "unknown"})` });
             continue;
           }
         } catch (e) {
@@ -130,7 +131,10 @@ export const discoverLeads = createServerFn({ method: "POST" })
             niche: f.niche,
             source: "firecrawl_search",
             status: "new",
-            platform: verifiedPlatform,
+            platform: detection.platform,
+            platform_confidence: detection.confidence,
+            platform_matches: detection.matches,
+            platform_alternatives: detection.alternatives,
           },
           { onConflict: "user_id,domain", ignoreDuplicates: true },
         )
@@ -178,7 +182,8 @@ export const enrichLead = createServerFn({ method: "POST" })
       console.error("scrape failed", e);
     }
 
-    const platform = detectPlatform(html);
+    const detection = detectPlatformDetailed(html);
+    const platform = detection.platform;
 
     // If search config had a tech_stack filter and platform doesn't match, discard
     if (lead.search_config_id) {
@@ -191,7 +196,13 @@ export const enrichLead = createServerFn({ method: "POST" })
       if (filter.length > 0 && (!platform || !filter.includes(platform))) {
         await context.supabase
           .from("leads")
-          .update({ platform, status: "filtered_out" })
+          .update({
+            platform,
+            platform_confidence: detection.confidence,
+            platform_matches: detection.matches,
+            platform_alternatives: detection.alternatives,
+            status: "filtered_out",
+          })
           .eq("id", lead.id);
         return { ok: true, filtered: true, platform };
       }
@@ -233,8 +244,60 @@ ${markdown.slice(0, 15000) || "(no content)"}
         status: "enriched",
         email: output.contact_email ?? lead.email,
         platform,
+        platform_confidence: detection.confidence,
+        platform_matches: detection.matches,
+        platform_alternatives: detection.alternatives,
       })
       .eq("id", lead.id);
 
-    return { ok: true, platform };
+    return { ok: true, platform, confidence: detection.confidence };
   });
+
+export const updateLeadStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { lead_id: string; stage: LeadStage }) => {
+    if (!isLeadStage(d.stage)) throw new Error(`Invalid stage: ${d.stage}`);
+    return d;
+  })
+  .handler(async ({ context, data }) => {
+    const { data: row, error } = await context.supabase
+      .from("leads")
+      .update({
+        status: data.stage,
+        stage_updated_at: new Date().toISOString(),
+        ai_stage_reason: null, // manual moves clear the AI reason
+      })
+      .eq("id", data.lead_id)
+      .eq("user_id", context.userId)
+      .select()
+      .single();
+    if (error) throw error;
+    return row;
+  });
+
+export const listPipeline = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const [{ data: leads, error }, { data: profile }] = await Promise.all([
+      context.supabase
+        .from("leads")
+        .select("id, business_name, domain, website, status, platform, platform_confidence, niche, stage_updated_at, ai_stage_reason, email")
+        .eq("user_id", context.userId)
+        .in("status", PIPELINE_STAGES as unknown as string[])
+        .order("stage_updated_at", { ascending: false })
+        .limit(500),
+      context.supabase
+        .from("business_profiles")
+        .select("avg_deal_value, avg_close_rate, currency")
+        .eq("user_id", context.userId)
+        .maybeSingle(),
+    ]);
+    if (error) throw error;
+    return {
+      leads: leads ?? [],
+      avg_deal_value: Number(profile?.avg_deal_value ?? 0),
+      avg_close_rate: Number(profile?.avg_close_rate ?? 0.1),
+      currency: profile?.currency ?? "USD",
+    };
+  });
+

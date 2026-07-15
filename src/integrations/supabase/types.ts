@@ -67,7 +67,10 @@ export type Database = {
       business_profiles: {
         Row: {
           ai_summary: string | null
+          avg_close_rate: number | null
+          avg_deal_value: number | null
           created_at: string
+          currency: string | null
           daily_send_cap: number
           id: string
           ideal_client: string | null
@@ -82,7 +85,10 @@ export type Database = {
         }
         Insert: {
           ai_summary?: string | null
+          avg_close_rate?: number | null
+          avg_deal_value?: number | null
           created_at?: string
+          currency?: string | null
           daily_send_cap?: number
           id?: string
           ideal_client?: string | null
@@ -97,7 +103,10 @@ export type Database = {
         }
         Update: {
           ai_summary?: string | null
+          avg_close_rate?: number | null
+          avg_deal_value?: number | null
           created_at?: string
+          currency?: string | null
           daily_send_cap?: number
           id?: string
           ideal_client?: string | null
@@ -364,6 +373,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          ai_stage_reason: string | null
           business_name: string | null
           created_at: string
           domain: string | null
@@ -373,14 +383,19 @@ export type Database = {
           name: string | null
           niche: string | null
           platform: string | null
+          platform_alternatives: Json | null
+          platform_confidence: number | null
+          platform_matches: number | null
           search_config_id: string | null
           source: string | null
+          stage_updated_at: string | null
           status: string
           updated_at: string
           user_id: string
           website: string | null
         }
         Insert: {
+          ai_stage_reason?: string | null
           business_name?: string | null
           created_at?: string
           domain?: string | null
@@ -390,14 +405,19 @@ export type Database = {
           name?: string | null
           niche?: string | null
           platform?: string | null
+          platform_alternatives?: Json | null
+          platform_confidence?: number | null
+          platform_matches?: number | null
           search_config_id?: string | null
           source?: string | null
+          stage_updated_at?: string | null
           status?: string
           updated_at?: string
           user_id: string
           website?: string | null
         }
         Update: {
+          ai_stage_reason?: string | null
           business_name?: string | null
           created_at?: string
           domain?: string | null
@@ -407,8 +427,12 @@ export type Database = {
           name?: string | null
           niche?: string | null
           platform?: string | null
+          platform_alternatives?: Json | null
+          platform_confidence?: number | null
+          platform_matches?: number | null
           search_config_id?: string | null
           source?: string | null
+          stage_updated_at?: string | null
           status?: string
           updated_at?: string
           user_id?: string
