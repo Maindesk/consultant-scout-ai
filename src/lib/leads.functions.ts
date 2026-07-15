@@ -54,6 +54,15 @@ export const discoverLeads = createServerFn({ method: "POST" })
     const fc = getFirecrawl();
     const limit = Math.min(data.limit ?? 15, 30);
 
+    // Quota gate — check workspace lead budget before spending Firecrawl calls.
+    const { getActiveWorkspaceIdForUser, checkQuota, recordUsage } = await import("./quota.server");
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
+    if (workspaceId) {
+      const q = await checkQuota(workspaceId, "leads_discovered", 1);
+      if (!q.ok) throw new Error(q.message ?? "Lead quota exceeded");
+    }
+
+
     const techStack: PlatformName[] = (cfg.tech_stack ?? []) as PlatformName[];
     const platformHint = techStack[0] ?? null;
     const queries = buildPractitionerQueries({
