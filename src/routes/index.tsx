@@ -109,20 +109,20 @@ function Hero() {
         </div>
 
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] max-w-5xl mx-auto">
-          Fill your pipeline with{" "}
+          Get more users for your{" "}
           <span
             className="bg-clip-text text-transparent"
             style={{ backgroundImage: "var(--gradient-brand)" }}
           >
-            perfect-fit customers
+            white-label
           </span>{" "}
           — on autopilot.
         </h1>
 
         <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          PixelOutreach finds businesses running the exact tech stack you replace, writes
-          tailored emails from what it reads on their site, and even provisions a personalized
-          demo before they reply. You just approve.
+          PixelOutreach finds site owners running the exact platforms you replace, writes
+          tailored emails from what it reads on their site, and auto-provisions a personalized
+          demo on your white-label before they reply. You just approve.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
