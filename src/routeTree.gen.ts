@@ -19,11 +19,14 @@ import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBusinessRouteImport } from './routes/_authenticated/business'
 import { Route as AuthenticatedBoardRouteImport } from './routes/_authenticated/board'
+import { Route as AuthenticatedBillingRouteImport } from './routes/_authenticated/billing'
 import { Route as AuthenticatedApprovalRouteImport } from './routes/_authenticated/approval'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicWebhooksInboundEmailRouteImport } from './routes/api/public/webhooks.inbound-email'
 import { Route as ApiPublicCronSendOutboundRouteImport } from './routes/api/public/cron.send-outbound'
 import { Route as ApiPublicCronDailyAutopilotRouteImport } from './routes/api/public/cron.daily-autopilot'
+import { Route as ApiPublicWebhooksPlatformWorkspaceIdRouteImport } from './routes/api/public/webhooks.platform.$workspaceId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -74,6 +77,11 @@ const AuthenticatedBoardRoute = AuthenticatedBoardRouteImport.update({
   path: '/board',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBillingRoute = AuthenticatedBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedApprovalRoute = AuthenticatedApprovalRouteImport.update({
   id: '/approval',
   path: '/approval',
@@ -82,6 +90,11 @@ const AuthenticatedApprovalRoute = AuthenticatedApprovalRouteImport.update({
 const AuthenticatedAnalyticsRoute = AuthenticatedAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ApiPublicWebhooksInboundEmailRoute =
@@ -102,12 +115,20 @@ const ApiPublicCronDailyAutopilotRoute =
     path: '/api/public/cron/daily-autopilot',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksPlatformWorkspaceIdRoute =
+  ApiPublicWebhooksPlatformWorkspaceIdRouteImport.update({
+    id: '/api/public/webhooks/platform/$workspaceId',
+    path: '/api/public/webhooks/platform/$workspaceId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/approval': typeof AuthenticatedApprovalRoute
+  '/billing': typeof AuthenticatedBillingRoute
   '/board': typeof AuthenticatedBoardRoute
   '/business': typeof AuthenticatedBusinessRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -118,12 +139,15 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
   '/api/public/webhooks/inbound-email': typeof ApiPublicWebhooksInboundEmailRoute
+  '/api/public/webhooks/platform/$workspaceId': typeof ApiPublicWebhooksPlatformWorkspaceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/approval': typeof AuthenticatedApprovalRoute
+  '/billing': typeof AuthenticatedBillingRoute
   '/board': typeof AuthenticatedBoardRoute
   '/business': typeof AuthenticatedBusinessRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -134,14 +158,17 @@ export interface FileRoutesByTo {
   '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
   '/api/public/webhooks/inbound-email': typeof ApiPublicWebhooksInboundEmailRoute
+  '/api/public/webhooks/platform/$workspaceId': typeof ApiPublicWebhooksPlatformWorkspaceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/approval': typeof AuthenticatedApprovalRoute
+  '/_authenticated/billing': typeof AuthenticatedBillingRoute
   '/_authenticated/board': typeof AuthenticatedBoardRoute
   '/_authenticated/business': typeof AuthenticatedBusinessRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -152,14 +179,17 @@ export interface FileRoutesById {
   '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
   '/api/public/webhooks/inbound-email': typeof ApiPublicWebhooksInboundEmailRoute
+  '/api/public/webhooks/platform/$workspaceId': typeof ApiPublicWebhooksPlatformWorkspaceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/admin'
     | '/analytics'
     | '/approval'
+    | '/billing'
     | '/board'
     | '/business'
     | '/dashboard'
@@ -170,12 +200,15 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
     | '/api/public/webhooks/inbound-email'
+    | '/api/public/webhooks/platform/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/admin'
     | '/analytics'
     | '/approval'
+    | '/billing'
     | '/board'
     | '/business'
     | '/dashboard'
@@ -186,13 +219,16 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
     | '/api/public/webhooks/inbound-email'
+    | '/api/public/webhooks/platform/$workspaceId'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/admin'
     | '/_authenticated/analytics'
     | '/_authenticated/approval'
+    | '/_authenticated/billing'
     | '/_authenticated/board'
     | '/_authenticated/business'
     | '/_authenticated/dashboard'
@@ -203,6 +239,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
     | '/api/public/webhooks/inbound-email'
+    | '/api/public/webhooks/platform/$workspaceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,6 +249,7 @@ export interface RootRouteChildren {
   ApiPublicCronDailyAutopilotRoute: typeof ApiPublicCronDailyAutopilotRoute
   ApiPublicCronSendOutboundRoute: typeof ApiPublicCronSendOutboundRoute
   ApiPublicWebhooksInboundEmailRoute: typeof ApiPublicWebhooksInboundEmailRoute
+  ApiPublicWebhooksPlatformWorkspaceIdRoute: typeof ApiPublicWebhooksPlatformWorkspaceIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -286,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBoardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/billing': {
+      id: '/_authenticated/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AuthenticatedBillingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/approval': {
       id: '/_authenticated/approval'
       path: '/approval'
@@ -298,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/analytics'
       fullPath: '/analytics'
       preLoaderRoute: typeof AuthenticatedAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/webhooks/inbound-email': {
@@ -321,12 +373,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCronDailyAutopilotRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/platform/$workspaceId': {
+      id: '/api/public/webhooks/platform/$workspaceId'
+      path: '/api/public/webhooks/platform/$workspaceId'
+      fullPath: '/api/public/webhooks/platform/$workspaceId'
+      preLoaderRoute: typeof ApiPublicWebhooksPlatformWorkspaceIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedApprovalRoute: typeof AuthenticatedApprovalRoute
+  AuthenticatedBillingRoute: typeof AuthenticatedBillingRoute
   AuthenticatedBoardRoute: typeof AuthenticatedBoardRoute
   AuthenticatedBusinessRoute: typeof AuthenticatedBusinessRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -337,8 +398,10 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedApprovalRoute: AuthenticatedApprovalRoute,
+  AuthenticatedBillingRoute: AuthenticatedBillingRoute,
   AuthenticatedBoardRoute: AuthenticatedBoardRoute,
   AuthenticatedBusinessRoute: AuthenticatedBusinessRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
@@ -358,17 +421,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronDailyAutopilotRoute: ApiPublicCronDailyAutopilotRoute,
   ApiPublicCronSendOutboundRoute: ApiPublicCronSendOutboundRoute,
   ApiPublicWebhooksInboundEmailRoute: ApiPublicWebhooksInboundEmailRoute,
+  ApiPublicWebhooksPlatformWorkspaceIdRoute:
+    ApiPublicWebhooksPlatformWorkspaceIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -215,7 +215,7 @@ export const enrichLead = createServerFn({ method: "POST" })
     const { output } = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: EnrichmentSchema }),
-      prompt: `Analyze this coach/consultant business site and extract structured intel. Find contact email if visible on the page.
+      prompt: `Analyze this business website and extract structured intel. Find contact email if visible on the page.
 
 URL: ${lead.website}
 Business name: ${lead.business_name ?? "unknown"}

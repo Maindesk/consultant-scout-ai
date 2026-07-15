@@ -77,16 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AI Outbound Agent" },
-      { name: "description", content: "AI agent that finds coaches & consultants, writes personalized outreach, and follows up — you approve every message." },
-      { property: "og:title", content: "AI Outbound Agent" },
-      { property: "og:description", content: "AI agent that finds coaches & consultants, writes personalized outreach, and follows up — you approve every message." },
+      { title: "PixelOutreach — AI outbound for any business" },
+      { name: "description", content: "PixelOutreach finds ideal prospects, personalizes every message from their site, and follows up until they respond. You approve every send." },
+      { property: "og:title", content: "PixelOutreach — AI outbound for any business" },
+      { property: "og:description", content: "AI outbound platform: lead discovery, deep enrichment, personalized sequences, human approval." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "AI Outbound Agent" },
-      { name: "twitter:description", content: "AI agent that finds coaches & consultants, writes personalized outreach, and follows up — you approve every message." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/34da393c-14ff-471d-8691-486034aa186f/id-preview-271e6568--484a8808-43eb-48ad-85a2-3c8f896a3616.lovable.app-1783342926936.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/34da393c-14ff-471d-8691-486034aa186f/id-preview-271e6568--484a8808-43eb-48ad-85a2-3c8f896a3616.lovable.app-1783342926936.png" },
+      { name: "twitter:title", content: "PixelOutreach — AI outbound for any business" },
+      { name: "twitter:description", content: "AI outbound platform: lead discovery, deep enrichment, personalized sequences, human approval." },
     ],
     links: [
       {

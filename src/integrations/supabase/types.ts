@@ -391,6 +391,69 @@ export type Database = {
           },
         ]
       }
+      lead_platform_sites: {
+        Row: {
+          created_at: string
+          edit_sso_url: string | null
+          id: string
+          lead_id: string
+          personalization_tags: Json
+          project_id: string
+          sso_expires_at: string | null
+          subdomain: string | null
+          template_id: string | null
+          template_type: string | null
+          updated_at: string
+          website_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          edit_sso_url?: string | null
+          id?: string
+          lead_id: string
+          personalization_tags?: Json
+          project_id: string
+          sso_expires_at?: string | null
+          subdomain?: string | null
+          template_id?: string | null
+          template_type?: string | null
+          updated_at?: string
+          website_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          edit_sso_url?: string | null
+          id?: string
+          lead_id?: string
+          personalization_tags?: Json
+          project_id?: string
+          sso_expires_at?: string | null
+          subdomain?: string | null
+          template_id?: string | null
+          template_type?: string | null
+          updated_at?: string
+          website_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_platform_sites_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: true
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_platform_sites_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           ai_stage_reason: string | null
@@ -413,6 +476,9 @@ export type Database = {
           updated_at: string
           user_id: string
           website: string | null
+          won_at: string | null
+          won_mrr_cents: number | null
+          won_period: string | null
         }
         Insert: {
           ai_stage_reason?: string | null
@@ -435,6 +501,9 @@ export type Database = {
           updated_at?: string
           user_id: string
           website?: string | null
+          won_at?: string | null
+          won_mrr_cents?: number | null
+          won_period?: string | null
         }
         Update: {
           ai_stage_reason?: string | null
@@ -457,6 +526,9 @@ export type Database = {
           updated_at?: string
           user_id?: string
           website?: string | null
+          won_at?: string | null
+          won_mrr_cents?: number | null
+          won_period?: string | null
         }
         Relationships: [
           {
@@ -522,6 +594,143 @@ export type Database = {
           },
         ]
       }
+      plans: {
+        Row: {
+          ai_credits_monthly: number
+          code: string
+          created_at: string
+          emails_monthly: number
+          id: string
+          is_active: boolean
+          leads_monthly: number
+          name: string
+          price_usd_monthly: number
+          sort_order: number
+        }
+        Insert: {
+          ai_credits_monthly: number
+          code: string
+          created_at?: string
+          emails_monthly: number
+          id?: string
+          is_active?: boolean
+          leads_monthly: number
+          name: string
+          price_usd_monthly: number
+          sort_order?: number
+        }
+        Update: {
+          ai_credits_monthly?: number
+          code?: string
+          created_at?: string
+          emails_monthly?: number
+          id?: string
+          is_active?: boolean
+          leads_monthly?: number
+          name?: string
+          price_usd_monthly?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      platform_events: {
+        Row: {
+          error: string | null
+          handled: boolean
+          id: string
+          payload: Json
+          received_at: string
+          topic: string
+          workspace_id: string | null
+        }
+        Insert: {
+          error?: string | null
+          handled?: boolean
+          id?: string
+          payload: Json
+          received_at?: string
+          topic: string
+          workspace_id?: string | null
+        }
+        Update: {
+          error?: string | null
+          handled?: boolean
+          id?: string
+          payload?: Json
+          received_at?: string
+          topic?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revenue_events: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          external_subscription_id: string | null
+          id: string
+          lead_id: string | null
+          occurred_at: string
+          period: string | null
+          plan_id: string | null
+          plan_name: string | null
+          type: string
+          workspace_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          external_subscription_id?: string | null
+          id?: string
+          lead_id?: string | null
+          occurred_at?: string
+          period?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          type: string
+          workspace_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          external_subscription_id?: string | null
+          id?: string
+          lead_id?: string | null
+          occurred_at?: string
+          period?: string | null
+          plan_id?: string | null
+          plan_name?: string | null
+          type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenue_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       search_configs: {
         Row: {
           created_at: string
@@ -557,6 +766,128 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          canceled_at: string | null
+          created_at: string
+          current_period_end: string
+          current_period_start: string
+          id: string
+          plan_code: string
+          provider: string | null
+          provider_customer_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          trial_end: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_code: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          canceled_at?: string | null
+          created_at?: string
+          current_period_end?: string
+          current_period_start?: string
+          id?: string
+          plan_code?: string
+          provider?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          trial_end?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "subscriptions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: true
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      super_admins: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      usage_counters: {
+        Row: {
+          ai_credits_used: number
+          created_at: string
+          emails_used: number
+          id: string
+          leads_discovered_used: number
+          period_end: string
+          period_start: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          ai_credits_used?: number
+          created_at?: string
+          emails_used?: number
+          id?: string
+          leads_discovered_used?: number
+          period_end: string
+          period_start: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          ai_credits_used?: number
+          created_at?: string
+          emails_used?: number
+          id?: string
+          leads_discovered_used?: number
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_counters_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workspace_members: {
         Row: {
@@ -641,6 +972,18 @@ export type Database = {
         Args: { _role: string; _user_id: string; _workspace_id: string }
         Returns: boolean
       }
+      increment_usage: {
+        Args: {
+          _ai: number
+          _emails: number
+          _leads: number
+          _period_end: string
+          _period_start: string
+          _workspace_id: string
+        }
+        Returns: undefined
+      }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       is_workspace_member: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean

@@ -195,7 +195,7 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
       const { output } = await generateText({
         model: gateway(CHAT_MODEL),
         output: Output.object({ schema: EnrichmentSchema }),
-        prompt: `Analyze this coach/consultant site.
+        prompt: `Analyze this business's website and extract structured intel.
 
 URL: ${lead.website}
 Business: ${lead.business_name ?? "unknown"}
