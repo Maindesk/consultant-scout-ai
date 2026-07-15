@@ -2,7 +2,23 @@ import { createFileRoute, Outlet, redirect, Link, useNavigate } from "@tanstack/
 import { supabase } from "@/integrations/supabase/client";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Building2, Target, Users, CheckCircle2, Inbox, BarChart3, LogOut, KanbanSquare, Settings } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getIsSuperAdmin } from "@/lib/admin.functions";
+import {
+  LayoutDashboard,
+  Building2,
+  Target,
+  Users,
+  CheckCircle2,
+  Inbox,
+  BarChart3,
+  LogOut,
+  KanbanSquare,
+  Settings,
+  CreditCard,
+  Shield,
+} from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -23,11 +39,18 @@ const nav = [
   { to: "/approval", label: "Approval", icon: CheckCircle2 },
   { to: "/inbox", label: "Inbox", icon: Inbox },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/billing", label: "Billing", icon: CreditCard },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 function AuthedShell() {
   const navigate = useNavigate();
+  const isAdminFn = useServerFn(getIsSuperAdmin);
+  const { data: adminInfo } = useQuery({
+    queryKey: ["is_super_admin"],
+    queryFn: () => isAdminFn(),
+  });
+
   async function signOut() {
     await authClient.auth.signOut();
     await supabase.auth.signOut();
@@ -38,8 +61,8 @@ function AuthedShell() {
     <div className="min-h-screen flex bg-background">
       <aside className="w-60 border-r border-border bg-card flex flex-col">
         <div className="px-4 py-5 border-b border-border">
-          <div className="font-semibold text-sm">AI Outbound</div>
-          <div className="text-xs text-muted-foreground">Coach & consultant agent</div>
+          <div className="font-semibold text-sm">PixelOutreach</div>
+          <div className="text-xs text-muted-foreground">AI outbound platform</div>
         </div>
         <nav className="flex-1 p-2 space-y-1">
           {nav.map((n) => (
@@ -53,6 +76,16 @@ function AuthedShell() {
               {n.label}
             </Link>
           ))}
+          {adminInfo?.is_super_admin && (
+            <Link
+              to="/admin"
+              activeProps={{ className: "bg-accent text-accent-foreground" }}
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-amber-600 hover:bg-accent hover:text-accent-foreground transition"
+            >
+              <Shield className="w-4 h-4" />
+              Platform admin
+            </Link>
+          )}
         </nav>
         <div className="p-2 border-t border-border">
           <Button variant="ghost" size="sm" onClick={signOut} className="w-full justify-start">

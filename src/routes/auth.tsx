@@ -12,7 +12,7 @@ const lovableAuth = createLovableAuth();
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Sign in — AI Outbound Agent" }] }),
+  head: () => ({ meta: [{ title: "Sign in — PixelOutreach" }] }),
   component: AuthPage,
 });
 
@@ -125,7 +125,7 @@ function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>AI Outbound Agent</CardTitle>
+          <CardTitle>PixelOutreach</CardTitle>
           <CardDescription>
             {mode === "signin" ? "Sign in to your workspace." : "Create your workspace."}
           </CardDescription>
