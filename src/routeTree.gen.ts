@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedTargetingRouteImport } from './routes/_authenticated/targeting'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedInboxRouteImport } from './routes/_authenticated/inbox'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -41,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedTargetingRoute = AuthenticatedTargetingRouteImport.update({
   id: '/targeting',
   path: '/targeting',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/targeting': typeof AuthenticatedTargetingRoute
   '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/inbox': typeof AuthenticatedInboxRoute
   '/leads': typeof AuthenticatedLeadsRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/targeting': typeof AuthenticatedTargetingRoute
   '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/inbox': typeof AuthenticatedInboxRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/targeting': typeof AuthenticatedTargetingRoute
   '/api/public/cron/daily-autopilot': typeof ApiPublicCronDailyAutopilotRoute
   '/api/public/cron/send-outbound': typeof ApiPublicCronSendOutboundRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/inbox'
     | '/leads'
+    | '/settings'
     | '/targeting'
     | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/inbox'
     | '/leads'
+    | '/settings'
     | '/targeting'
     | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/inbox'
     | '/_authenticated/leads'
+    | '/_authenticated/settings'
     | '/_authenticated/targeting'
     | '/api/public/cron/daily-autopilot'
     | '/api/public/cron/send-outbound'
@@ -230,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/targeting'
       fullPath: '/targeting'
       preLoaderRoute: typeof AuthenticatedTargetingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leads': {
@@ -313,6 +332,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedInboxRoute: typeof AuthenticatedInboxRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedTargetingRoute: typeof AuthenticatedTargetingRoute
 }
 
@@ -324,6 +344,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedInboxRoute: AuthenticatedInboxRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedTargetingRoute: AuthenticatedTargetingRoute,
 }
 
