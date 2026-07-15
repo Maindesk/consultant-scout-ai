@@ -4,6 +4,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@utility bg-brand-gradient {
+  background-image: var(--gradient-brand);
+}
+@utility bg-brand-gradient-soft {
+  background-image: var(--gradient-brand-soft);
+}
+@utility shadow-brand {
+  box-shadow: var(--shadow-brand);
+}
+
 /*
  * Design system definition.
  *

@@ -1,12 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   getMyWorkspaces,
-  createWorkspace,
   updateWorkspaceSettings,
-  setActiveWorkspace,
   testPlatformApi,
   testMainSiteApi,
   type WorkspaceSummary,
@@ -18,41 +16,17 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, XCircle, KeyRound, Plus, Check } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, KeyRound } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const qc = useQueryClient();
   const list = useServerFn(getMyWorkspaces);
-  const create = useServerFn(createWorkspace);
-  const setActive = useServerFn(setActiveWorkspace);
-
   const { data: workspaces, isLoading } = useQuery({
     queryKey: ["workspaces"],
     queryFn: () => list(),
-  });
-
-  const [newName, setNewName] = useState("");
-
-  const createMut = useMutation({
-    mutationFn: (name: string) => create({ data: { name } }),
-    onSuccess: () => {
-      setNewName("");
-      qc.invalidateQueries({ queryKey: ["workspaces"] });
-      toast.success("Workspace created");
-    },
-    onError: (e: any) => toast.error(e.message ?? "Failed"),
-  });
-
-  const activate = useMutation({
-    mutationFn: (workspace_id: string) => setActive({ data: { workspace_id } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["workspaces"] });
-      toast.success("Active workspace changed");
-    },
   });
 
   const active = workspaces?.find((w) => w.is_active) ?? workspaces?.[0];
@@ -61,55 +35,10 @@ function SettingsPage() {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">Workspaces & platform integrations</p>
+        <p className="text-sm text-muted-foreground">Connect your platform, main site, and webhook endpoint.</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Workspaces</CardTitle>
-          <CardDescription>
-            Each workspace holds its own Platform + Main Site API credentials. Sell this outreach tool to any Simvoly white-label — a workspace per operator.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {workspaces?.length === 0 && (
-            <p className="text-sm text-muted-foreground">No workspaces yet. Create your first one.</p>
-          )}
-          {workspaces?.map((w) => (
-            <div key={w.id} className="flex items-center justify-between border border-border rounded-md p-3">
-              <div>
-                <div className="flex items-center gap-2 font-medium text-sm">
-                  {w.name}
-                  <Badge variant="outline" className="text-xs">{w.role}</Badge>
-                  {w.is_active && <Badge className="text-xs"><Check className="w-3 h-3 mr-1" />active</Badge>}
-                </div>
-                <div className="text-xs text-muted-foreground">{w.slug}</div>
-              </div>
-              {!w.is_active && (
-                <Button size="sm" variant="outline" onClick={() => activate.mutate(w.id)}>
-                  Make active
-                </Button>
-              )}
-            </div>
-          ))}
-          <Separator />
-          <div className="flex gap-2">
-            <Input
-              placeholder="New workspace name (e.g. Maindesk)"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-            <Button
-              onClick={() => newName.trim() && createMut.mutate(newName.trim())}
-              disabled={createMut.isPending}
-            >
-              <Plus className="w-4 h-4 mr-1" /> Create
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
+      {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
       {active && <WorkspaceIntegrationsCard workspace={active} />}
     </div>
   );

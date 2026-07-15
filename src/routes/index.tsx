@@ -84,7 +84,7 @@ function Nav() {
 
 function LogoMark() {
   return (
-    <div className="w-8 h-8 rounded-lg bg-[var(--gradient-brand)] flex items-center justify-center shadow-[var(--shadow-brand)]">
+    <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center shadow-brand">
       <Zap className="w-4 h-4 text-white" />
     </div>
   );
@@ -110,7 +110,10 @@ function Hero() {
 
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] max-w-5xl mx-auto">
           Fill your pipeline with{" "}
-          <span className="bg-[var(--gradient-brand)] bg-clip-text text-transparent">
+          <span
+            className="bg-clip-text text-transparent"
+            style={{ backgroundImage: "var(--gradient-brand)" }}
+          >
             perfect-fit customers
           </span>{" "}
           — on autopilot.
@@ -124,7 +127,7 @@ function Hero() {
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link to="/auth">
-            <Button size="lg" className="h-12 px-6 text-base shadow-[var(--shadow-brand)]">
+            <Button size="lg" className="h-12 px-6 text-base shadow-brand">
               Start 7-day free trial <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </Link>
@@ -150,7 +153,7 @@ function Hero() {
 function HeroPreview() {
   return (
     <div className="relative mt-16 mx-auto max-w-5xl">
-      <div className="absolute -inset-4 bg-[var(--gradient-brand)] opacity-20 blur-3xl rounded-3xl" />
+      <div className="absolute -inset-4 bg-brand-gradient opacity-20 blur-3xl rounded-3xl" />
       <div className="relative rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
         <div className="flex items-center gap-1.5 px-4 py-3 border-b border-border bg-muted/40">
           <div className="w-3 h-3 rounded-full bg-red-400/70" />
@@ -287,7 +290,7 @@ function Features() {
         <div className="mt-16 grid md:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f) => (
             <div key={f.title} className="rounded-2xl border border-border bg-card p-6 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-              <div className="w-10 h-10 rounded-lg bg-[var(--gradient-brand)] text-white flex items-center justify-center mb-4 shadow-[var(--shadow-brand)]">
+              <div className="w-10 h-10 rounded-lg bg-brand-gradient text-white flex items-center justify-center mb-4 shadow-brand">
                 <f.icon className="w-4.5 h-4.5" />
               </div>
               <h3 className="font-semibold">{f.title}</h3>
@@ -311,7 +314,7 @@ function Outcomes() {
   return (
     <section className="py-24 md:py-32">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="rounded-3xl border border-border bg-[var(--gradient-brand-soft)] p-10 md:p-16 relative overflow-hidden">
+        <div className="rounded-3xl border border-border bg-brand-gradient-soft p-10 md:p-16 relative overflow-hidden">
           <div className="absolute -top-20 -right-20 w-80 h-80 bg-primary/20 rounded-full blur-3xl" />
           <div className="relative">
             <SectionHeader
@@ -323,7 +326,7 @@ function Outcomes() {
             <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8">
               {stats.map((s) => (
                 <div key={s.label}>
-                  <div className="text-4xl md:text-5xl font-bold bg-[var(--gradient-brand)] bg-clip-text text-transparent">
+                  <div className="text-4xl md:text-5xl font-bold bg-brand-gradient bg-clip-text text-transparent">
                     {s.value}
                   </div>
                   <div className="mt-2 text-sm text-muted-foreground max-w-[180px]">{s.label}</div>
@@ -408,12 +411,12 @@ function Pricing() {
               key={t.code}
               className={`relative rounded-2xl border p-8 flex flex-col ${
                 t.featured
-                  ? "border-primary bg-card shadow-[var(--shadow-brand)] md:-translate-y-3"
+                  ? "border-primary bg-card shadow-brand md:-translate-y-3"
                   : "border-border bg-card"
               }`}
             >
               {t.featured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[var(--gradient-brand)] text-white text-xs font-semibold px-3 py-1 rounded-full">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-gradient text-white text-xs font-semibold px-3 py-1 rounded-full">
                   Most popular
                 </div>
               )}
@@ -478,7 +481,7 @@ function FinalCTA() {
   return (
     <section className="py-24 md:py-32">
       <div className="max-w-5xl mx-auto px-6">
-        <div className="relative rounded-3xl bg-[var(--gradient-brand)] p-10 md:p-16 text-center overflow-hidden shadow-[var(--shadow-brand)]">
+        <div className="relative rounded-3xl bg-brand-gradient p-10 md:p-16 text-center overflow-hidden shadow-brand">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.2),transparent_60%)]" />
           <div className="relative">
             <div className="flex justify-center gap-1 mb-6">
