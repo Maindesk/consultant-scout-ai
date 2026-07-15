@@ -72,9 +72,11 @@ export type Database = {
           created_at: string
           currency: string | null
           daily_send_cap: number
+          default_email_goal: string | null
           id: string
           ideal_client: string | null
           offer_description: string | null
+          product_capabilities: string | null
           sender_email: string | null
           sender_name: string | null
           services: Json | null
@@ -90,9 +92,11 @@ export type Database = {
           created_at?: string
           currency?: string | null
           daily_send_cap?: number
+          default_email_goal?: string | null
           id?: string
           ideal_client?: string | null
           offer_description?: string | null
+          product_capabilities?: string | null
           sender_email?: string | null
           sender_name?: string | null
           services?: Json | null
@@ -108,9 +112,11 @@ export type Database = {
           created_at?: string
           currency?: string | null
           daily_send_cap?: number
+          default_email_goal?: string | null
           id?: string
           ideal_client?: string | null
           offer_description?: string | null
+          product_capabilities?: string | null
           sender_email?: string | null
           sender_name?: string | null
           services?: Json | null
