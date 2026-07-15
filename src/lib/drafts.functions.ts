@@ -12,6 +12,7 @@ function extractJson(text: string): unknown {
   throw new Error("Could not parse AI response as JSON");
 }
 
+const DAY_OFFSETS = [0, 3, 7, 14];
 const SequenceSchema = z.object({
   emails: z.array(
     z.object({
@@ -22,6 +23,22 @@ const SequenceSchema = z.object({
     }),
   ),
 });
+
+function normalizeEmails(parsed: unknown): unknown {
+  const emails = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray((parsed as any)?.emails)
+      ? (parsed as any).emails
+      : [];
+  return {
+    emails: emails.map((e: any, i: number) => ({
+      step_number: typeof e?.step_number === "number" ? e.step_number : i + 1,
+      day_offset: typeof e?.day_offset === "number" ? e.day_offset : (DAY_OFFSETS[i] ?? i * 3),
+      subject: String(e?.subject ?? ""),
+      body: String(e?.body ?? ""),
+    })),
+  };
+}
 
 export const listPendingDrafts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
