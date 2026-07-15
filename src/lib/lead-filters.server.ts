@@ -121,49 +121,47 @@ export function buildPractitionerQueries(opts: {
   keywords: string[];
   platform?: PlatformName | null;
 }): string[] {
-  const niches = opts.niches.length ? opts.niches : ["coach"];
+  const niches = opts.niches.length ? opts.niches : [""];
   const locs = opts.locations.length ? opts.locations : [""];
   const kw = opts.keywords.join(" ").trim();
+  const platform = opts.platform ?? null;
 
-  // Practitioner-intent phrases — appear on real service pages, rarely on articles.
-  const intents = [
-    '"work with me"',
-    '"book a call"',
-    '"schedule a consultation"',
-    '"1:1 coaching"',
-    '"my services"',
-  ];
+  const ecommerce: PlatformName[] = ["Shopify"];
+  const isEcom = !!platform && ecommerce.includes(platform);
 
-  // Negative operators to strip listicles and vendor/agency noise.
+  const intents = isEcom
+    ? ['"add to cart"', '"shop now"', '"free shipping"', '"our collection"', '"shop all"']
+    : ['"work with me"', '"book a call"', '"schedule a consultation"', '"1:1 coaching"', '"my services"'];
+
+  const platformHints: Partial<Record<PlatformName, string>> = {
+    Shopify: '"cdn.shopify.com"',
+    Squarespace: '"static.squarespace.com"',
+    Wix: '"wixstatic.com"',
+    Webflow: '"website-files.com"',
+    WordPress: '"wp-content"',
+    Kajabi: '"kajabi-cdn"',
+    Framer: '"framerusercontent.com"',
+    Ghost: '"ghost.io"',
+  };
+  const platformOp = platform ? platformHints[platform] ?? "" : "";
+
   const neg = [
-    "-best",
-    "-top",
-    "-guide",
-    "-examples",
-    "-template",
-    "-templates",
-    '-"how to"',
-    "-blog",
-    "-tutorial",
-    "-review",
-    "-site:squarespace.com",
-    "-site:wix.com",
-    "-site:webflow.com",
-    "-site:wordpress.com",
-    "-site:kajabi.com",
-    "-site:medium.com",
-    "-site:reddit.com",
-    "-site:youtube.com",
-    "-site:linkedin.com",
+    "-best", "-top", "-guide", "-examples", "-template", "-templates",
+    '-"how to"', "-blog", "-tutorial", "-review",
+    "-site:squarespace.com", "-site:wix.com", "-site:webflow.com",
+    "-site:wordpress.com", "-site:kajabi.com", "-site:shopify.com",
+    "-site:medium.com", "-site:reddit.com", "-site:youtube.com", "-site:linkedin.com",
   ].join(" ");
 
   const queries: string[] = [];
   for (const n of niches) {
     for (const l of locs) {
       const base = [n, l, kw].filter(Boolean).join(" ");
-      // Two variants per niche/location: different intent phrases → more coverage.
-      queries.push(`${base} ${intents[0]} ${neg}`.trim());
-      queries.push(`${base} (${intents[1]} OR ${intents[3]}) ${neg}`.trim());
+      queries.push(`${base} ${platformOp} ${intents[0]} ${neg}`.replace(/\s+/g, " ").trim());
+      queries.push(`${base} ${platformOp} (${intents[1]} OR ${intents[2]}) ${neg}`.replace(/\s+/g, " ").trim());
+      if (isEcom) {
+        queries.push(`${base} ${platformOp} ${intents[3]} ${neg}`.replace(/\s+/g, " ").trim());
+      }
     }
   }
   return queries;
