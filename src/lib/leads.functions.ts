@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output } from "ai";
+import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
