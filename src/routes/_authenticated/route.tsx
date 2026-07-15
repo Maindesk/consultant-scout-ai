@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, redirect, Link, useNavigate } from "@tanstack/
 import { supabase } from "@/integrations/supabase/client";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Building2, Target, Users, CheckCircle2, Inbox, BarChart3, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Target, Users, CheckCircle2, Inbox, BarChart3, LogOut, KanbanSquare } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -19,6 +19,7 @@ const nav = [
   { to: "/business", label: "My Business", icon: Building2 },
   { to: "/targeting", label: "Targeting", icon: Target },
   { to: "/leads", label: "Leads", icon: Users },
+  { to: "/board", label: "Board", icon: KanbanSquare },
   { to: "/approval", label: "Approval", icon: CheckCircle2 },
   { to: "/inbox", label: "Inbox", icon: Inbox },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
