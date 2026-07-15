@@ -104,7 +104,20 @@ Write a 4-email sequence: initial + 3 follow-ups.
 - Each email under 130 words. Day offsets: 0, 3, 7, 14. Subject under 60 chars. CTA in every email matches the campaign goal above.`,
 
     });
+      output = r.output;
+      usage = r.usage;
+    } catch (err) {
+      if (NoObjectGeneratedError.isInstance(err)) {
+        const parsed = extractJson(err.text ?? "");
+        output = SequenceSchema.parse(parsed);
+        usage = err.usage as any;
+      } else {
+        throw err;
+      }
+    }
     if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(usage?.totalTokens ?? 0) });
+
+
 
 
     // Delete previous pending drafts
