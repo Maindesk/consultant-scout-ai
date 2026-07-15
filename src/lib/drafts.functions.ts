@@ -109,7 +109,8 @@ Write a 4-email sequence: initial + 3 follow-ups.
     } catch (err) {
       if (NoObjectGeneratedError.isInstance(err)) {
         const parsed = extractJson(err.text ?? "");
-        output = SequenceSchema.parse(parsed);
+        const normalized = Array.isArray(parsed) ? { emails: parsed } : parsed;
+        output = SequenceSchema.parse(normalized);
         usage = err.usage as any;
       } else {
         throw err;
