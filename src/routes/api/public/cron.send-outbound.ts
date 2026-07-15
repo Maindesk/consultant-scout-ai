@@ -89,8 +89,9 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
           try {
             // Optional: on email step 3, inject a fresh 15-min SSO edit link for
             // the lead's personalized demo site (auto-provisions if none exists).
-            let subject = draft.subject as string;
+            const subject = draft.subject as string;
             let bodyText = draft.body as string;
+
             if (draft.step_number === 3) {
               const { data: settings } = await supabaseAdmin
                 .from("automation_settings")
