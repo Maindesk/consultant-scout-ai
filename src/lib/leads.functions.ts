@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output } from "ai";
+import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
@@ -232,10 +232,9 @@ export const enrichLead = createServerFn({ method: "POST" })
     }
 
     const gateway = getLovableGateway();
-    const { output, usage } = await generateText({
-      model: gateway(CHAT_MODEL),
-      output: Output.object({ schema: EnrichmentSchema }),
-      prompt: `Analyze this business website and extract structured intel. Find contact email if visible on the page.
+    let output: z.infer<typeof EnrichmentSchema>;
+    let totalTokens = 0;
+    const prompt = `Analyze this business website and extract structured intel. Find contact email if visible on the page. Return ONLY JSON matching the schema; use empty strings for unknown text fields, null for contact_email if not found, and [] for pain_points if none.
 
 URL: ${lead.website}
 Business name: ${lead.business_name ?? "unknown"}
@@ -246,9 +245,40 @@ ${summarizeSignalsForPrompt(signals)}
 
 Content:
 ${markdown.slice(0, 15000) || "(no content)"}
-`,
-    });
-    if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(usage?.totalTokens ?? 0) });
+`;
+    try {
+      const res = await generateText({
+        model: gateway(CHAT_MODEL),
+        output: Output.object({ schema: EnrichmentSchema }),
+        prompt,
+      });
+      output = res.output;
+      totalTokens = res.usage?.totalTokens ?? 0;
+    } catch (err) {
+      if (!NoObjectGeneratedError.isInstance(err)) throw err;
+      const raw = (err as any).text ?? "";
+      totalTokens = (err as any).usage?.totalTokens ?? 0;
+      const cleaned = raw.replace(/^```json\s*/im, "").replace(/^```\s*/im, "").replace(/```\s*$/im, "").trim();
+      let parsed: unknown;
+      try { parsed = JSON.parse(cleaned); } catch {
+        throw new Error("AI returned malformed output; please retry.");
+      }
+      const p: any = parsed ?? {};
+      output = {
+        business_summary: String(p.business_summary ?? ""),
+        offer: String(p.offer ?? ""),
+        target_audience: String(p.target_audience ?? ""),
+        pricing_signals: String(p.pricing_signals ?? ""),
+        funnel_presence: String(p.funnel_presence ?? ""),
+        contact_email: p.contact_email ? String(p.contact_email) : null,
+        pain_points: Array.isArray(p.pain_points)
+          ? p.pain_points
+              .filter((x: any) => x && (x.title || x.description))
+              .map((x: any) => ({ title: String(x.title ?? ""), description: String(x.description ?? "") }))
+          : [],
+      };
+    }
+    if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(totalTokens) });
 
 
     const { error: upsertErr } = await context.supabase.from("lead_enrichments").upsert(
