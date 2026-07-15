@@ -73,83 +73,101 @@ export const discoverLeads = createServerFn({ method: "POST" })
     });
 
     // Over-fetch: junk filter + platform verification will drop many.
-    const perQuery = Math.max(5, Math.ceil((limit * 4) / Math.max(queries.length, 1)));
+    const perQuery = Math.max(10, Math.ceil((limit * 5) / Math.max(queries.length, 1)));
     const found: Array<{ url: string; title?: string; description?: string; niche: string }> = [];
 
-    for (const q of queries.slice(0, 6)) {
-      try {
-        const res: any = await fc.search(q, { limit: perQuery });
-        const results = res?.web ?? res?.data ?? [];
-        for (const r of results) {
-          if (r?.url) {
-            found.push({
-              url: r.url,
-              title: r.title,
-              description: r.description,
-              niche: (cfg.niches ?? [])[0] ?? "",
-            });
-          }
+    const searchResults = await Promise.all(
+      queries.slice(0, 10).map(async (q) => {
+        try {
+          const res: any = await fc.search(q, { limit: perQuery });
+          return res?.web ?? res?.data ?? [];
+        } catch (e) {
+          console.error("firecrawl search failed", q, e);
+          return [];
         }
-      } catch (e) {
-        console.error("firecrawl search failed", q, e);
+      }),
+    );
+    for (const results of searchResults) {
+      for (const r of results) {
+        if (r?.url) {
+          found.push({
+            url: r.url,
+            title: r.title,
+            description: r.description,
+            niche: (cfg.niches ?? [])[0] ?? "",
+          });
+        }
       }
     }
 
+    // Dedupe by domain + drop junk before verification.
     const seen = new Set<string>();
-    const inserted: any[] = [];
+    const candidates: Array<{ url: string; title?: string; description?: string; niche: string; domain: string }> = [];
     const rejected: Array<{ url: string; reason: string }> = [];
-
     for (const f of found) {
-      if (inserted.length >= limit) break;
       const domain = extractDomain(f.url);
       if (!domain || seen.has(domain)) continue;
       seen.add(domain);
-
       const junk = isJunkLead({ url: f.url, title: f.title, description: f.description, domain });
       if (junk.junk) {
         rejected.push({ url: f.url, reason: junk.reason ?? "junk" });
         continue;
       }
+      candidates.push({ ...f, domain });
+    }
 
-      // If user requires a specific platform, verify BEFORE saving as a lead.
-      let detection = { platform: null as PlatformName | null, confidence: 0, matches: 0, alternatives: [] as any[] };
-      if (techStack.length > 0) {
-        try {
-          const scrape: any = await fc.scrape(f.url, { formats: ["html"], onlyMainContent: false });
-          const html = scrape?.html ?? scrape?.rawHtml ?? "";
-          detection = detectPlatformDetailed(html);
-          if (!detection.platform || !techStack.includes(detection.platform)) {
-            rejected.push({ url: f.url, reason: `platform mismatch (${detection.platform ?? "unknown"})` });
-            continue;
+    // Verify platform in parallel batches to hit the requested limit quickly.
+    const inserted: any[] = [];
+    const BATCH = 6;
+    for (let i = 0; i < candidates.length && inserted.length < limit; i += BATCH) {
+      const batch = candidates.slice(i, i + BATCH);
+      const verified = await Promise.all(
+        batch.map(async (c) => {
+          let detection = { platform: null as PlatformName | null, confidence: 0, matches: 0, alternatives: [] as any[] };
+          if (techStack.length > 0) {
+            try {
+              const scrape: any = await fc.scrape(c.url, { formats: ["html"], onlyMainContent: false });
+              const html = scrape?.html ?? scrape?.rawHtml ?? "";
+              detection = detectPlatformDetailed(html);
+              if (!detection.platform || !techStack.includes(detection.platform)) {
+                rejected.push({ url: c.url, reason: `platform mismatch (${detection.platform ?? "unknown"})` });
+                return null;
+              }
+            } catch {
+              rejected.push({ url: c.url, reason: "scrape failed" });
+              return null;
+            }
           }
-        } catch (e) {
-          rejected.push({ url: f.url, reason: "scrape failed" });
-          continue;
-        }
+          return { c, detection };
+        }),
+      );
+      for (const v of verified) {
+        if (!v) continue;
+        if (inserted.length >= limit) break;
+        const { c, detection } = v;
+        const { data: row, error } = await context.supabase
+          .from("leads")
+          .upsert(
+            {
+              user_id: context.userId,
+              search_config_id: cfg.id,
+              website: c.url,
+              domain: c.domain,
+              business_name: c.title,
+              niche: c.niche,
+              source: "firecrawl_search",
+              status: "new",
+              platform: detection.platform,
+              platform_confidence: detection.confidence,
+              platform_matches: detection.matches,
+              platform_alternatives: detection.alternatives,
+            },
+            { onConflict: "user_id,domain", ignoreDuplicates: true },
+          )
+          .select()
+          .maybeSingle();
+        if (!error && row) inserted.push(row);
       }
-
-      const { data: row, error } = await context.supabase
-        .from("leads")
-        .upsert(
-          {
-            user_id: context.userId,
-            search_config_id: cfg.id,
-            website: f.url,
-            domain,
-            business_name: f.title,
-            niche: f.niche,
-            source: "firecrawl_search",
-            status: "new",
-            platform: detection.platform,
-            platform_confidence: detection.confidence,
-            platform_matches: detection.matches,
-            platform_alternatives: detection.alternatives,
-          },
-          { onConflict: "user_id,domain", ignoreDuplicates: true },
-        )
-        .select()
-        .maybeSingle();
-      if (!error && row) inserted.push(row);
     }
     if (workspaceId && inserted.length > 0) {
       await recordUsage(workspaceId, { leads: inserted.length });
