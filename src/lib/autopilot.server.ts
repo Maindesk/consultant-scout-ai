@@ -260,8 +260,12 @@ Prospect:
 - Their offer: ${lead.enrichment.offer}
 - Audience: ${lead.enrichment.target_audience}
 - Pain points: ${JSON.stringify(lead.enrichment.pain_points)}
+- Tools detected on site: ${JSON.stringify(lead.signals?.tools ?? [])}
+- Site gaps: ${JSON.stringify(lead.signals?.gaps ?? [])}
+- Perf: ${JSON.stringify(lead.signals?.performance ?? {})}
 
-4-email sequence: initial + 3 follow-ups. Tone: professional. Reference ONE specific detail. Under 120 words each. Day offsets: 0, 3, 7, 14. Subject under 60 chars.`,
+4-email sequence: initial + 3 follow-ups. Tone: professional. Reference ONE specific detail — prefer a detected tool ("saw you use Calendly…") or a gap ("no lead magnet on your site"). Under 120 words each. Day offsets: 0, 3, 7, 14. Subject under 60 chars.`,
+
       });
 
       await supabaseAdmin
