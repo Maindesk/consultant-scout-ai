@@ -19,6 +19,8 @@ export type Database = {
           active_search_config_id: string | null
           auto_draft: boolean
           auto_enrich: boolean
+          auto_insert_sso_in_email3: boolean
+          auto_provision_demo: boolean
           created_at: string
           daily_lead_target: number
           enabled: boolean
@@ -32,6 +34,8 @@ export type Database = {
           active_search_config_id?: string | null
           auto_draft?: boolean
           auto_enrich?: boolean
+          auto_insert_sso_in_email3?: boolean
+          auto_provision_demo?: boolean
           created_at?: string
           daily_lead_target?: number
           enabled?: boolean
@@ -45,6 +49,8 @@ export type Database = {
           active_search_config_id?: string | null
           auto_draft?: boolean
           auto_enrich?: boolean
+          auto_insert_sso_in_email3?: boolean
+          auto_provision_demo?: boolean
           created_at?: string
           daily_lead_target?: number
           enabled?: boolean
