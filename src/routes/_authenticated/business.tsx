@@ -65,6 +65,8 @@ function BusinessPage() {
         avg_deal_value: Number(profile.avg_deal_value ?? 0),
         avg_close_rate: Number(profile.avg_close_rate ?? 0.1),
         currency: profile.currency ?? "USD",
+        product_capabilities: (profile as any).product_capabilities ?? "",
+        default_email_goal: (profile as any).default_email_goal ?? "book_meeting",
       });
     }
   }, [profile]);
