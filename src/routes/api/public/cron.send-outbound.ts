@@ -87,15 +87,47 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
           }
 
           try {
+            // Optional: on email step 3, inject a fresh 15-min SSO edit link for
+            // the lead's personalized demo site (auto-provisions if none exists).
+            let subject = draft.subject as string;
+            let bodyText = draft.body as string;
+            if (draft.step_number === 3) {
+              const { data: settings } = await supabaseAdmin
+                .from("automation_settings")
+                .select("auto_insert_sso_in_email3, auto_provision_demo")
+                .eq("user_id", item.user_id)
+                .maybeSingle();
+              if (settings?.auto_insert_sso_in_email3) {
+                try {
+                  const demoUrl = await ensureDemoSiteAndSsoLink({
+                    userId: item.user_id,
+                    workspaceId,
+                    leadId: item.lead_id,
+                    autoProvision: !!settings.auto_provision_demo,
+                  });
+                  if (demoUrl) {
+                    if (bodyText.includes("{{DEMO_LINK}}")) {
+                      bodyText = bodyText.replaceAll("{{DEMO_LINK}}", demoUrl);
+                    } else {
+                      bodyText = `${bodyText}\n\nP.S. I put together a personalized preview of what your site could look like on our platform — one-click edit (link expires in 15 min): ${demoUrl}`;
+                    }
+                  }
+                } catch (e) {
+                  console.error("SSO injection failed", e);
+                }
+              }
+            }
+
             const { message_id } = await sendTransactionalEmail({
               to: lead.email,
               from: `${fromName} <${fromEmail}>`,
-              subject: draft.subject,
-              html: textToHtml(draft.body),
-              text: draft.body,
+              subject,
+              html: textToHtml(bodyText),
+              text: bodyText,
               template_name: "cold-outreach",
               reply_to: fromEmail,
             });
+
 
             await supabaseAdmin.from("email_sends").insert({
               user_id: item.user_id,
