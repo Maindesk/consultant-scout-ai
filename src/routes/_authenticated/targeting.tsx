@@ -37,6 +37,7 @@ function Targeting() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [techStack, setTechStack] = useState<string[]>([]);
+  const [discoverLimits, setDiscoverLimits] = useState<Record<string, number>>({});
 
   const createMut = useMutation({
     mutationFn: () => create({ data: { name, niches, locations, keywords, tech_stack: techStack } }),
@@ -49,13 +50,14 @@ function Targeting() {
   });
 
   const discoverMut = useMutation({
-    mutationFn: (id: string) => discover({ data: { search_config_id: id } }),
+    mutationFn: ({ id, limit }: { id: string; limit: number }) => discover({ data: { search_config_id: id, limit } }),
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["leads"] });
-      toast.success(`Discovered ${r.discovered} new leads`);
+      toast.success(`Discovered ${r.discovered} new leads${r.rejected ? ` — ${r.rejected} filtered` : ""}`);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Discovery failed"),
   });
+
 
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
@@ -159,8 +161,23 @@ function Targeting() {
                   ))}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => discoverMut.mutate(c.id)} disabled={discoverMut.isPending}>
+              <div className="flex items-center gap-2">
+                <select
+                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  value={discoverLimits[c.id] ?? 15}
+                  onChange={(e) => setDiscoverLimits((s) => ({ ...s, [c.id]: Number(e.target.value) }))}
+                  disabled={discoverMut.isPending}
+                  aria-label="How many leads to discover"
+                >
+                  {[5, 10, 15, 25, 50, 100].map((n) => (
+                    <option key={n} value={n}>{n} leads</option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  onClick={() => discoverMut.mutate({ id: c.id, limit: discoverLimits[c.id] ?? 15 })}
+                  disabled={discoverMut.isPending}
+                >
                   {discoverMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
                   Discover
                 </Button>
