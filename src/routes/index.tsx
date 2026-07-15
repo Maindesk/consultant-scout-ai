@@ -23,11 +23,11 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PixelOutreach — AI outbound built for platform partners" },
+      { title: "PixelOutreach — Get more users for your white-label" },
       {
         name: "description",
         content:
-          "Turn your platform's ideal-fit prospects into signed customers. AI discovers leads on your target tech stack, personalizes every email, provisions demo sites, and closes the loop — end to end.",
+          "The AI outbound engine for white-label platform partners. Discover site owners running the stacks you replace, personalize every email, auto-provision demos, and sign up new users to your white-label — on autopilot.",
       },
     ],
   }),
@@ -109,20 +109,20 @@ function Hero() {
         </div>
 
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] max-w-5xl mx-auto">
-          Fill your pipeline with{" "}
+          Get more users for your{" "}
           <span
             className="bg-clip-text text-transparent"
             style={{ backgroundImage: "var(--gradient-brand)" }}
           >
-            perfect-fit customers
+            white-label
           </span>{" "}
           — on autopilot.
         </h1>
 
         <p className="mt-6 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          PixelOutreach finds businesses running the exact tech stack you replace, writes
-          tailored emails from what it reads on their site, and even provisions a personalized
-          demo before they reply. You just approve.
+          PixelOutreach finds site owners running the exact platforms you replace, writes
+          tailored emails from what it reads on their site, and auto-provisions a personalized
+          demo on your white-label before they reply. You just approve.
         </p>
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -490,7 +490,7 @@ function FinalCTA() {
               ))}
             </div>
             <h2 className="text-3xl md:text-5xl font-bold text-white tracking-tight max-w-3xl mx-auto">
-              Your next 100 customers are already online. Go get them.
+              Your next 100 white-label users are already online. Go get them.
             </h2>
             <p className="mt-4 text-white/90 text-lg max-w-xl mx-auto">
               Set up in 10 minutes. First personalized emails ready before your coffee cools.

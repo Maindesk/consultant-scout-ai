@@ -109,8 +109,8 @@ function Dashboard() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5">
               {form.enabled
-                ? "Autopilot is live — new prospects are being drafted for your review each morning."
-                : "Turn on Autopilot below and PixelOutreach will start filling your pipeline every day."}
+                ? "Autopilot is live, new potential users for your white-label are being drafted for your review each morning."
+                : "Turn on Autopilot below and PixelOutreach will start bringing new users to your white-label every day."}
             </p>
           </div>
           <div className="flex gap-2">
