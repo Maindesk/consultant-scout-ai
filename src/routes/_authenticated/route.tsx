@@ -100,9 +100,7 @@ function AuthedShell() {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 border-r border-border/60 bg-white flex flex-col sticky top-0 h-screen">
         <Link to="/dashboard" className="px-5 h-16 flex items-center gap-2.5 border-b border-border/60">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-gradient shadow-brand">
-            <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
-          </div>
+          <img src={logoAsset.url} alt="PixelOutreach" className="w-8 h-8 rounded-lg shadow-brand" />
           <div>
             <div className="font-semibold text-[15px] tracking-tight leading-none">PixelOutreach</div>
             <div className="text-[11px] text-muted-foreground mt-1">AI outbound platform</div>
