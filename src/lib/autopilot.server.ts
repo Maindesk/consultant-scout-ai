@@ -193,10 +193,13 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
     try {
       let md = "";
       let html = "";
+      let pagesScraped = 0;
       try {
-        const r: any = await fc.scrape(lead.website, { formats: ["markdown", "html"], onlyMainContent: false });
-        md = r?.markdown ?? "";
-        html = r?.html ?? r?.rawHtml ?? "";
+        const { deepScrapeSite } = await import("./deep-scrape.server");
+        const deep = await deepScrapeSite(lead.website);
+        md = deep.aggregatedMarkdown;
+        html = deep.aggregatedHtml;
+        pagesScraped = deep.pagesScraped;
       } catch (e) {
         result.errors.push(`scrape ${lead.website}: ${String(e)}`);
       }
@@ -237,7 +240,7 @@ ${md.slice(0, 15000) || "(no content)"}`,
           funnel_presence: output.funnel_presence,
           pain_points: output.pain_points,
           raw_markdown: md.slice(0, 20000),
-          website_signals: signals as any,
+          website_signals: { ...(signals as any), pages_scraped: pagesScraped },
         },
         { onConflict: "lead_id" },
       );
