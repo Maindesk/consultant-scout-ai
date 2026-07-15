@@ -262,8 +262,11 @@ function DemoSitePanel({ leadId }: { leadId: string }) {
   return (
     <div className="border-t pt-3 space-y-2">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Globe className="w-3.5 h-3.5" /> Personalized demo site
+        <Globe className="w-3.5 h-3.5" /> Auto-provision a white-label demo site for this lead
       </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Spin up a pre-built site on your white-label platform tailored to this prospect's business, then drop a one-click edit link into the outreach email so they can log in, tweak it, and see exactly what switching to your white-label looks like — no signup friction.
+      </p>
       {site ? (
         <div className="space-y-2">
           <div className="text-xs">
@@ -339,8 +342,16 @@ function WebsiteSignalsPanel({ signals }: { signals: any }) {
         </div>
       )}
       {page && (
-        <div className="text-xs text-muted-foreground">
-          {page.word_count} words · H1: {page.has_h1 ? "yes" : "no"} · OG image: {page.has_og_image ? "yes" : "no"} · Mobile viewport: {page.has_viewport ? "yes" : "no"}
+        <div className="space-y-1">
+          <div className="text-xs text-muted-foreground">
+            {page.word_count} words · H1: {page.has_h1 ? "yes" : "no"} · OG image: {page.has_og_image ? "yes" : "no"}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className={`inline-flex items-center gap-1 rounded px-2 py-0.5 border ${page.responsive ? "bg-green-500/10 text-green-700 border-green-500/30" : "bg-red-500/10 text-red-700 border-red-500/30"}`}
+              title={page.responsive_signals ? `viewport meta: ${page.responsive_signals.viewport ? "✓" : "✗"} · media queries: ${page.responsive_signals.media_queries ? "✓" : "✗"} · responsive framework: ${page.responsive_signals.responsive_framework ? "✓" : "✗"} · srcset images: ${page.responsive_signals.srcset ? "✓" : "✗"} · fluid container: ${page.responsive_signals.fluid_container ? "✓" : "✗"}` : ""}>
+              {page.responsive ? "Mobile-responsive" : "Not mobile-responsive"}
+            </span>
+          </div>
         </div>
       )}
       {tools.length > 0 && (

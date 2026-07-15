@@ -121,6 +121,8 @@ export interface WebsiteSignals {
     has_og_image: boolean;
     outbound_link_count: number;
     image_count: number;
+    responsive: boolean;
+    responsive_signals: { viewport: boolean; media_queries: boolean; responsive_framework: boolean; srcset: boolean; fluid_container: boolean };
   };
   performance: {
     status: number | null;
@@ -156,10 +158,16 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   const text = src.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
   const word_count = text.split(/\s+/).filter(Boolean).length;
   const has_h1 = /<h1[\s>]/i.test(src);
-  const has_viewport = /<meta[^>]+name=["']viewport["']/i.test(src);
+  const has_viewport = /<meta[^>]+name=["']viewport["'][^>]*content=["'][^"']*width=/i.test(src);
   const has_og_image = /<meta[^>]+property=["']og:image["']/i.test(src);
   const outbound_link_count = (src.match(/<a\s[^>]*href=["']https?:\/\//gi) ?? []).length;
   const image_count = (src.match(/<img\s/gi) ?? []).length;
+  const media_queries = /@media[^{]*\(([^)]*max-width|[^)]*min-width)/i.test(src);
+  const responsive_framework = /(tailwind|bootstrap|foundation|bulma|chakra|mui|material-ui|framework7)/i.test(src) || /\bclass=["'][^"']*\b(sm:|md:|lg:|xl:|col-(?:xs|sm|md|lg)-\d+)/i.test(src);
+  const srcset = /<img[^>]+srcset=/i.test(src) || /<source[^>]+srcset=/i.test(src);
+  const fluid_container = /max-width\s*:\s*100%/i.test(src) || /width\s*:\s*100%/i.test(src);
+  const responsive_signals = { viewport: has_viewport, media_queries, responsive_framework, srcset, fluid_container };
+  const responsive = has_viewport && (media_queries || responsive_framework || srcset || fluid_container);
 
   const gaps: string[] = [];
   if (!categories.includes("scheduling")) gaps.push("no calendar/booking tool detected");
@@ -171,11 +179,12 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   if (!has_og_image) gaps.push("no Open Graph image (poor social shares)");
   if (!has_h1) gaps.push("no H1 heading (SEO)");
   if (word_count < 250) gaps.push("thin page copy (<250 words)");
+  if (!responsive) gaps.push("site does not appear mobile-responsive");
 
   return {
     tools,
     categories,
-    page: { title, description, word_count, has_h1, has_viewport, has_og_image, outbound_link_count, image_count },
+    page: { title, description, word_count, has_h1, has_viewport, has_og_image, outbound_link_count, image_count, responsive, responsive_signals },
     gaps,
   };
 }
