@@ -37,6 +37,7 @@ function Targeting() {
   const [keywords, setKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [techStack, setTechStack] = useState<string[]>([]);
+  const [discoverLimits, setDiscoverLimits] = useState<Record<string, number>>({});
 
   const createMut = useMutation({
     mutationFn: () => create({ data: { name, niches, locations, keywords, tech_stack: techStack } }),
@@ -46,6 +47,15 @@ function Targeting() {
       toast.success("Config created");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
+  });
+
+  const discoverMut = useMutation({
+    mutationFn: ({ id, limit }: { id: string; limit: number }) => discover({ data: { search_config_id: id, limit } }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      toast.success(`Discovered ${r.discovered} new leads${r.rejected ? ` — ${r.rejected} filtered` : ""}`);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Discovery failed"),
   });
 
   const discoverMut = useMutation({
