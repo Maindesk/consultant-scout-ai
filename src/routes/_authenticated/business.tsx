@@ -129,6 +129,31 @@ function BusinessPage() {
             <Label>Daily send cap</Label>
             <Input type="number" min={1} max={500} value={form.daily_send_cap} onChange={(e) => setForm({ ...form, daily_send_cap: Number(e.target.value) })} />
           </div>
+          <div className="grid grid-cols-3 gap-4 pt-2 border-t">
+            <div className="col-span-3">
+              <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Pricing & pipeline</div>
+              <p className="text-xs text-muted-foreground">Used to calculate expected pipeline value on the Board.</p>
+            </div>
+            <div>
+              <Label>Avg deal value</Label>
+              <Input type="number" min={0} step={100} value={form.avg_deal_value} onChange={(e) => setForm({ ...form, avg_deal_value: Number(e.target.value) })} />
+            </div>
+            <div>
+              <Label>Currency</Label>
+              <select
+                className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+                value={form.currency}
+                onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              >
+                {["USD", "EUR", "GBP", "CAD", "AUD"].map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Avg close rate</Label>
+              <Input type="number" min={0} max={1} step={0.05} value={form.avg_close_rate} onChange={(e) => setForm({ ...form, avg_close_rate: Number(e.target.value) })} />
+              <p className="text-xs text-muted-foreground mt-1">0.10 = 10%</p>
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button onClick={() => saveMut.mutate()} disabled={saveMut.isPending}>Save</Button>
           </div>
