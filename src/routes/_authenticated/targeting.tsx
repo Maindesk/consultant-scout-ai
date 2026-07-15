@@ -58,14 +58,6 @@ function Targeting() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Discovery failed"),
   });
 
-  const discoverMut = useMutation({
-    mutationFn: (id: string) => discover({ data: { search_config_id: id } }),
-    onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: ["leads"] });
-      toast.success(`Discovered ${r.discovered} new leads`);
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Discovery failed"),
-  });
 
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
