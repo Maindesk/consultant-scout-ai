@@ -42,6 +42,23 @@ function Dashboard() {
   const runNow = useServerFn(runAutopilotNow);
   const listCfgs = useServerFn(listSearchConfigs);
 
+  const [userName, setUserName] = useState<string>("");
+  useEffect(() => {
+    import("@/integrations/supabase/client").then(({ supabase }) => {
+      supabase.auth.getUser().then(({ data }) => {
+        const u = data.user;
+        if (!u) return;
+        const meta = (u.user_metadata ?? {}) as Record<string, string | undefined>;
+        const name =
+          meta.full_name ||
+          meta.name ||
+          [meta.first_name, meta.last_name].filter(Boolean).join(" ") ||
+          (u.email ? u.email.split("@")[0] : "");
+        if (name) setUserName(name.split(" ")[0]);
+      });
+    });
+  }, []);
+
   const { data: analytics } = useQuery({ queryKey: ["analytics"], queryFn: () => fetchAnalytics() });
   const { data: auto } = useQuery({ queryKey: ["automation"], queryFn: () => fetchAuto() });
   const { data: configs = [] } = useQuery({ queryKey: ["search_configs"], queryFn: () => listCfgs() });
@@ -105,7 +122,7 @@ function Dashboard() {
               <Sparkles className="w-3 h-3" /> Your outbound, running quietly in the background
             </div>
             <h1 className="text-[28px] font-semibold tracking-tight leading-tight">
-              Welcome back.
+              Welcome back{userName ? `, ${userName}` : ""}.
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5">
               {form.enabled
