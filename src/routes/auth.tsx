@@ -19,6 +19,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,7 +69,10 @@ function AuthPage() {
         const { data, error } = await authClient.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/auth` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth`,
+            data: { full_name: fullName.trim() },
+          },
         });
         if (error) throw error;
         if (!data.session) {
@@ -136,6 +140,12 @@ function AuthPage() {
           </Button>
           <div className="text-center text-xs text-muted-foreground">or</div>
           <form onSubmit={submit} className="space-y-3">
+            {mode === "signup" && (
+              <div>
+                <Label htmlFor="fullName">Full name</Label>
+                <Input id="fullName" type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Alex Doe" />
+              </div>
+            )}
             <div>
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
