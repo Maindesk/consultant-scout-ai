@@ -1,6 +1,7 @@
 /**
- * Detect the website platform from raw HTML fingerprints.
- * Runs server-side inside enrichment / autopilot.
+ * Detect the website platform from raw HTML fingerprints and score confidence.
+ * Confidence = fraction of that platform's signature patterns that matched.
+ * Alternatives = other platforms that also had at least one match, sorted by score.
  */
 import { KNOWN_PLATFORMS, type PlatformName } from "./platforms";
 
@@ -23,10 +24,43 @@ const SIGNATURES: Array<{ name: PlatformName; patterns: RegExp[] }> = [
   { name: "Carrd", patterns: [/carrd\.co/i] },
 ];
 
-export function detectPlatform(html?: string | null): PlatformName | null {
-  if (!html) return null;
+export type PlatformMatch = { platform: PlatformName; matches: number; total: number; confidence: number };
+
+export interface PlatformDetection {
+  platform: PlatformName | null;
+  confidence: number; // 0-1
+  matches: number;
+  alternatives: PlatformMatch[]; // other platforms that also had signals
+}
+
+export function detectPlatformDetailed(html?: string | null): PlatformDetection {
+  if (!html) return { platform: null, confidence: 0, matches: 0, alternatives: [] };
+
+  const scored: PlatformMatch[] = [];
   for (const sig of SIGNATURES) {
-    if (sig.patterns.some((p) => p.test(html))) return sig.name;
+    const matches = sig.patterns.reduce((n, p) => (p.test(html) ? n + 1 : n), 0);
+    if (matches > 0) {
+      scored.push({
+        platform: sig.name,
+        matches,
+        total: sig.patterns.length,
+        confidence: matches / sig.patterns.length,
+      });
+    }
   }
-  return null;
+  scored.sort((a, b) => b.confidence - a.confidence || b.matches - a.matches);
+
+  if (scored.length === 0) return { platform: null, confidence: 0, matches: 0, alternatives: [] };
+  const top = scored[0];
+  return {
+    platform: top.platform,
+    confidence: top.confidence,
+    matches: top.matches,
+    alternatives: scored.slice(1),
+  };
+}
+
+/** Back-compat convenience. */
+export function detectPlatform(html?: string | null): PlatformName | null {
+  return detectPlatformDetailed(html).platform;
 }
