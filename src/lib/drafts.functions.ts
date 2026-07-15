@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output } from "ai";
+import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+
+function extractJson(text: string): unknown {
+  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  try { return JSON.parse(cleaned); } catch {}
+  const m = cleaned.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch {} }
+  throw new Error("Could not parse AI response as JSON");
+}
 
 const SequenceSchema = z.object({
   emails: z.array(
@@ -53,7 +61,10 @@ export const draftEmailsForLead = createServerFn({ method: "POST" })
     const gateway = getLovableGateway();
     const tools = (enrichment as any)?.website_signals?.tools ?? [];
     const gaps = (enrichment as any)?.website_signals?.gaps ?? [];
-    const { output, usage } = await generateText({
+    let output: z.infer<typeof SequenceSchema>;
+    let usage: { totalTokens?: number } | undefined;
+    try {
+    const r = await generateText({
       model: gateway(CHAT_MODEL),
       output: Output.object({ schema: SequenceSchema }),
       prompt: `You are writing a highly personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
@@ -93,7 +104,20 @@ Write a 4-email sequence: initial + 3 follow-ups.
 - Each email under 130 words. Day offsets: 0, 3, 7, 14. Subject under 60 chars. CTA in every email matches the campaign goal above.`,
 
     });
+      output = r.output;
+      usage = r.usage;
+    } catch (err) {
+      if (NoObjectGeneratedError.isInstance(err)) {
+        const parsed = extractJson(err.text ?? "");
+        output = SequenceSchema.parse(parsed);
+        usage = err.usage as any;
+      } else {
+        throw err;
+      }
+    }
     if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(usage?.totalTokens ?? 0) });
+
+
 
 
     // Delete previous pending drafts
