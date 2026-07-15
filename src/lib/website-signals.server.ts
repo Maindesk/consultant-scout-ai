@@ -121,6 +121,8 @@ export interface WebsiteSignals {
     has_og_image: boolean;
     outbound_link_count: number;
     image_count: number;
+    responsive: boolean;
+    responsive_signals: { viewport: boolean; media_queries: boolean; responsive_framework: boolean; srcset: boolean; fluid_container: boolean };
   };
   performance: {
     status: number | null;
