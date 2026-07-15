@@ -1,0 +1,1 @@
+ALTER TABLE public.lead_enrichments ADD COLUMN IF NOT EXISTS website_signals JSONB;
