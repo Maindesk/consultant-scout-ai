@@ -251,7 +251,7 @@ ${markdown.slice(0, 15000) || "(no content)"}
     if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(usage?.totalTokens ?? 0) });
 
 
-    await context.supabase.from("lead_enrichments").upsert(
+    const { error: upsertErr } = await context.supabase.from("lead_enrichments").upsert(
       {
         lead_id: lead.id,
         user_id: context.userId,
@@ -266,9 +266,12 @@ ${markdown.slice(0, 15000) || "(no content)"}
       },
       { onConflict: "lead_id" },
     );
+    if (upsertErr) {
+      console.error("lead_enrichments upsert failed", upsertErr);
+      throw new Error(`Failed to save enrichment: ${upsertErr.message}`);
+    }
 
-
-    await context.supabase
+    const { error: updateErr } = await context.supabase
       .from("leads")
       .update({
         status: "enriched",
@@ -279,9 +282,14 @@ ${markdown.slice(0, 15000) || "(no content)"}
         platform_alternatives: detection.alternatives,
       })
       .eq("id", lead.id);
+    if (updateErr) {
+      console.error("leads update after enrichment failed", updateErr);
+      throw new Error(`Failed to update lead status: ${updateErr.message}`);
+    }
 
     return { ok: true, platform, confidence: detection.confidence };
   });
+
 
 export const updateLeadStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
