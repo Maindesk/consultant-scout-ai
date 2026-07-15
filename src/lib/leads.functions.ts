@@ -4,9 +4,10 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
 import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
-import { detectPlatform } from "./platform-detect.server";
+import { detectPlatform, detectPlatformDetailed } from "./platform-detect.server";
 import { isJunkLead, buildPractitionerQueries } from "./lead-filters.server";
 import type { PlatformName } from "./platforms";
+import { PIPELINE_STAGES, isLeadStage, type LeadStage } from "./pipeline";
 
 export const listLeads = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
