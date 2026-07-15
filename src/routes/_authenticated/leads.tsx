@@ -19,11 +19,31 @@ const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-500/10 text-blue-600",
   enriched: "bg-purple-500/10 text-purple-600",
   drafted: "bg-amber-500/10 text-amber-600",
+  contacted: "bg-cyan-500/10 text-cyan-600",
   approved: "bg-green-500/10 text-green-600",
   sent: "bg-emerald-500/10 text-emerald-600",
   replied: "bg-pink-500/10 text-pink-600",
+  in_progress: "bg-indigo-500/10 text-indigo-600",
+  won: "bg-green-500/10 text-green-700",
+  lost: "bg-gray-500/10 text-gray-600",
   rejected: "bg-gray-500/10 text-gray-600",
 };
+
+function ConfidenceBadge({ platform, confidence }: { platform?: string | null; confidence?: number | null }) {
+  if (!platform) return <span className="text-xs text-muted-foreground">—</span>;
+  const pct = Math.round(((confidence ?? 0) as number) * 100);
+  const tone =
+    pct >= 66 ? "bg-green-500/10 text-green-700 border-green-500/30"
+    : pct >= 33 ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
+    : "bg-gray-500/10 text-gray-600 border-gray-500/30";
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded border ${tone}`}>
+      <span className="font-medium">{platform}</span>
+      <span className="opacity-70">·</span>
+      <span>{pct}%</span>
+    </span>
+  );
+}
 
 function LeadsPage() {
   const qc = useQueryClient();
