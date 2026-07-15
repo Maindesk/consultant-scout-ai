@@ -129,13 +129,13 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
     }
 
     // If a platform is required, verify BEFORE saving.
-    let verifiedPlatform: PlatformName | null = null;
+    let detection = { platform: null as PlatformName | null, confidence: 0, matches: 0, alternatives: [] as any[] };
     if (techStack.length > 0) {
       try {
         const scrape: any = await fc.scrape(f.url, { formats: ["html"], onlyMainContent: false });
         const html = scrape?.html ?? scrape?.rawHtml ?? "";
-        verifiedPlatform = detectPlatform(html);
-        if (!verifiedPlatform || !techStack.includes(verifiedPlatform)) {
+        detection = detectPlatformDetailed(html);
+        if (!detection.platform || !techStack.includes(detection.platform)) {
           result.filtered_out += 1;
           continue;
         }
@@ -157,7 +157,10 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
           niche: f.niche,
           source: "autopilot",
           status: "new",
-          platform: verifiedPlatform,
+          platform: detection.platform,
+          platform_confidence: detection.confidence,
+          platform_matches: detection.matches,
+          platform_alternatives: detection.alternatives,
         },
         { onConflict: "user_id,domain", ignoreDuplicates: true },
       )
