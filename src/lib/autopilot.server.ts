@@ -193,10 +193,13 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
     try {
       let md = "";
       let html = "";
+      let pagesScraped = 0;
       try {
-        const r: any = await fc.scrape(lead.website, { formats: ["markdown", "html"], onlyMainContent: false });
-        md = r?.markdown ?? "";
-        html = r?.html ?? r?.rawHtml ?? "";
+        const { deepScrapeSite } = await import("./deep-scrape.server");
+        const deep = await deepScrapeSite(lead.website);
+        md = deep.aggregatedMarkdown;
+        html = deep.aggregatedHtml;
+        pagesScraped = deep.pagesScraped;
       } catch (e) {
         result.errors.push(`scrape ${lead.website}: ${String(e)}`);
       }
