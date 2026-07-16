@@ -156,6 +156,10 @@ export const updateWorkspaceSettings = createServerFn({ method: "POST" })
     if (data.name !== undefined) patch.name = data.name.trim();
     if (data.platform_wl_domain !== undefined) patch.platform_wl_domain = data.platform_wl_domain?.trim() || null;
     if (data.main_site_domain !== undefined) patch.main_site_domain = data.main_site_domain?.trim() || null;
+    if (data.sync_replies_to_main_site !== undefined) patch.sync_replies_to_main_site = data.sync_replies_to_main_site;
+    if (data.reply_contact_default_tag !== undefined) {
+      patch.reply_contact_default_tag = (data.reply_contact_default_tag || "PixelOutreach Reply").slice(0, 100);
+    }
 
     const { encryptSecret } = await import("./workspace-crypto.server");
     if (data.platform_client_key !== undefined) {
