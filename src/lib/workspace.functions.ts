@@ -30,7 +30,7 @@ export const getMyWorkspaces = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<WorkspaceSummary[]> => {
     const { data: members, error: mErr } = await context.supabase
       .from("workspace_members")
-      .select("role, workspace_id, workspaces(id, name, slug, platform_wl_domain, main_site_domain, platform_client_key_ciphertext, main_site_api_key_ciphertext, webhook_secret_ciphertext)")
+      .select("role, workspace_id, workspaces(id, name, slug, platform_wl_domain, main_site_domain, platform_client_key_ciphertext, main_site_api_key_ciphertext, webhook_secret_ciphertext, sync_replies_to_main_site, reply_contact_default_tag)")
       .eq("user_id", context.userId);
     if (mErr) throw mErr;
 
