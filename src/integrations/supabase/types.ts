@@ -292,6 +292,9 @@ export type Database = {
           id: string
           in_reply_to_send_id: string | null
           lead_id: string | null
+          main_site_contact_id: string | null
+          main_site_sync_error: string | null
+          main_site_synced_at: string | null
           received_at: string
           reply_sent_at: string | null
           reply_status: string
@@ -306,6 +309,9 @@ export type Database = {
           id?: string
           in_reply_to_send_id?: string | null
           lead_id?: string | null
+          main_site_contact_id?: string | null
+          main_site_sync_error?: string | null
+          main_site_synced_at?: string | null
           received_at?: string
           reply_sent_at?: string | null
           reply_status?: string
@@ -320,6 +326,9 @@ export type Database = {
           id?: string
           in_reply_to_send_id?: string | null
           lead_id?: string | null
+          main_site_contact_id?: string | null
+          main_site_sync_error?: string | null
+          main_site_synced_at?: string | null
           received_at?: string
           reply_sent_at?: string | null
           reply_status?: string
@@ -469,6 +478,8 @@ export type Database = {
           email: string | null
           id: string
           location: string | null
+          main_site_contact_id: string | null
+          main_site_tags: string[]
           name: string | null
           niche: string | null
           platform: string | null
@@ -494,6 +505,8 @@ export type Database = {
           email?: string | null
           id?: string
           location?: string | null
+          main_site_contact_id?: string | null
+          main_site_tags?: string[]
           name?: string | null
           niche?: string | null
           platform?: string | null
@@ -519,6 +532,8 @@ export type Database = {
           email?: string | null
           id?: string
           location?: string | null
+          main_site_contact_id?: string | null
+          main_site_tags?: string[]
           name?: string | null
           niche?: string | null
           platform?: string | null
@@ -943,7 +958,9 @@ export type Database = {
           owner_id: string
           platform_client_key_ciphertext: string | null
           platform_wl_domain: string | null
+          reply_contact_default_tag: string
           slug: string
+          sync_replies_to_main_site: boolean
           updated_at: string
           webhook_secret_ciphertext: string | null
         }
@@ -956,7 +973,9 @@ export type Database = {
           owner_id: string
           platform_client_key_ciphertext?: string | null
           platform_wl_domain?: string | null
+          reply_contact_default_tag?: string
           slug: string
+          sync_replies_to_main_site?: boolean
           updated_at?: string
           webhook_secret_ciphertext?: string | null
         }
@@ -969,7 +988,9 @@ export type Database = {
           owner_id?: string
           platform_client_key_ciphertext?: string | null
           platform_wl_domain?: string | null
+          reply_contact_default_tag?: string
           slug?: string
+          sync_replies_to_main_site?: boolean
           updated_at?: string
           webhook_secret_ciphertext?: string | null
         }
