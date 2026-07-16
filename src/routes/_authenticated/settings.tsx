@@ -198,6 +198,50 @@ function WorkspaceIntegrationsCard({ workspace }: { workspace: WorkspaceSummary 
               </span>
             )}
           </div>
+
+          {/* Reply → Contact sync */}
+          <div className="rounded-lg border border-dashed p-3 space-y-3 bg-muted/20">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <Tag className="w-4 h-4 mt-0.5 text-primary" />
+                <div>
+                  <div className="text-sm font-medium">Auto-sync replies as main-site contacts</div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed max-w-md">
+                    When a lead replies to your outreach, PixelOutreach creates (or updates) the
+                    contact on your main website via the Website API and tags them so your
+                    on-site automations (nurture sequences, segments, CRM stages) can take over.
+                    Requires the Main Site API above.
+                  </p>
+                </div>
+              </div>
+              <Switch checked={syncReplies} onCheckedChange={setSyncReplies} />
+            </div>
+            <div>
+              <Label className="text-xs">Default tag applied to every reply</Label>
+              <Input
+                value={defaultTag}
+                onChange={(e) => setDefaultTag(e.target.value)}
+                placeholder="PixelOutreach Reply"
+                maxLength={100}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Each synced contact also gets a classification tag like <code>Reply: interested</code>,
+                <code>Reply: question</code>, or <code>Reply: not_interested</code>.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() =>
+                saveMut.mutate({
+                  workspace_id: workspace.id,
+                  sync_replies_to_main_site: syncReplies,
+                  reply_contact_default_tag: defaultTag,
+                })
+              }
+            >
+              Save reply-sync settings
+            </Button>
+          </div>
         </section>
 
         <Separator />
