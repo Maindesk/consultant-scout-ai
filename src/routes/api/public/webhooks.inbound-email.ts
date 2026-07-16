@@ -90,17 +90,21 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
           console.error("Classifier failed", e);
         }
 
-        await supabaseAdmin.from("inbound_messages").insert({
-          user_id: lead.user_id,
-          lead_id: lead.id,
-          from_email: msg.from,
-          subject: msg.subject,
-          body: msg.text || msg.html || "",
-          classification,
-          suggested_reply,
-          reply_status: "pending_review",
-          in_reply_to_send_id: inReplyToSendId,
-        });
+        const { data: inbound } = await supabaseAdmin
+          .from("inbound_messages")
+          .insert({
+            user_id: lead.user_id,
+            lead_id: lead.id,
+            from_email: msg.from,
+            subject: msg.subject,
+            body: msg.text || msg.html || "",
+            classification,
+            suggested_reply,
+            reply_status: "pending_review",
+            in_reply_to_send_id: inReplyToSendId,
+          })
+          .select("id")
+          .single();
 
         // Stop remaining follow-ups
         await supabaseAdmin
@@ -119,6 +123,64 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
             stage_updated_at: new Date().toISOString(),
           })
           .eq("id", lead.id);
+
+        // Sync replier as a contact on the workspace's main website.
+        try {
+          const { data: bp } = await supabaseAdmin
+            .from("business_profiles")
+            .select("active_workspace_id")
+            .eq("user_id", lead.user_id)
+            .maybeSingle();
+          const workspaceId = bp?.active_workspace_id ?? null;
+          if (workspaceId) {
+            const { data: ws } = await supabaseAdmin
+              .from("workspaces")
+              .select("sync_replies_to_main_site, reply_contact_default_tag, main_site_domain, main_site_api_key_ciphertext")
+              .eq("id", workspaceId)
+              .maybeSingle();
+            if (ws?.sync_replies_to_main_site && ws.main_site_domain && ws.main_site_api_key_ciphertext) {
+              const { data: leadRow } = await supabaseAdmin
+                .from("leads")
+                .select("business_name, website, main_site_tags")
+                .eq("id", lead.id)
+                .maybeSingle();
+              const baseTag = (ws.reply_contact_default_tag ?? "PixelOutreach Reply").trim();
+              const classTag = `Reply: ${classification}`;
+              const existing: string[] = Array.isArray(leadRow?.main_site_tags) ? leadRow!.main_site_tags : [];
+              const nextTags = Array.from(new Set([...existing, baseTag, classTag].filter(Boolean)));
+
+              const { upsertMainSiteContact } = await import("@/lib/main-site-api.server");
+              const result = await upsertMainSiteContact({
+                workspaceId,
+                email: msg.from,
+                fullName: leadRow?.business_name,
+                website: leadRow?.website,
+                tags: nextTags,
+                source: "PixelOutreach — reply",
+              });
+              await supabaseAdmin
+                .from("inbound_messages")
+                .update({
+                  main_site_synced_at: result.ok ? new Date().toISOString() : null,
+                  main_site_sync_error: result.ok ? null : (result.error ?? "unknown"),
+                  main_site_contact_id: result.contactId ?? null,
+                } as never)
+                .eq("id", inbound!.id);
+              if (result.ok) {
+                await supabaseAdmin
+                  .from("leads")
+                  .update({
+                    main_site_tags: nextTags,
+                    main_site_contact_id: result.contactId ?? null,
+                  } as never)
+                  .eq("id", lead.id);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("main-site contact sync failed", e);
+        }
+
 
         // If interested + user opted in, auto-provision a personalized demo site.
         if (classification === "interested") {
