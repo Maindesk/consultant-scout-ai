@@ -139,6 +139,8 @@ export const updateWorkspaceSettings = createServerFn({ method: "POST" })
     platform_client_key?: string | null; // plaintext; empty => clear
     main_site_api_key?: string | null;
     webhook_secret?: string | null;
+    sync_replies_to_main_site?: boolean;
+    reply_contact_default_tag?: string;
   }) => d)
   .handler(async ({ context, data }) => {
     // Authorization: must be admin/owner
