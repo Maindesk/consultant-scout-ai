@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Loader2, Sparkles, Mail, ExternalLink, Globe, KeyRound } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Sparkles, Mail, ExternalLink, Globe, KeyRound, Tag, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 
