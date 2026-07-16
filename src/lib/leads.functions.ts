@@ -401,4 +401,61 @@ export const listPipeline = createServerFn({ method: "GET" })
     };
   });
 
+/**
+ * Push a tag to this lead's contact on the workspace's main website.
+ * Creates the contact if it doesn't exist yet (Website API upserts by email).
+ */
+export const pushLeadTagToMainSite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { lead_id: string; tag: string }) => d)
+  .handler(async ({ context, data }) => {
+    const tag = (data.tag ?? "").trim();
+    if (!tag) throw new Error("Tag is required");
+    if (tag.length > 60) throw new Error("Tag too long (max 60 chars)");
+
+    const { data: lead, error } = await context.supabase
+      .from("leads")
+      .select("id, email, business_name, website, main_site_tags")
+      .eq("id", data.lead_id)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!lead) throw new Error("Lead not found");
+    if (!lead.email) throw new Error("This lead has no email address yet — enrich it first.");
+
+    const { data: bp } = await context.supabase
+      .from("business_profiles")
+      .select("active_workspace_id")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const workspaceId = bp?.active_workspace_id;
+    if (!workspaceId) throw new Error("No active workspace");
+
+    const { upsertMainSiteContact } = await import("./main-site-api.server");
+    const existingTags: string[] = Array.isArray(lead.main_site_tags) ? lead.main_site_tags : [];
+    const nextTags = Array.from(new Set([...existingTags, tag]));
+
+    const result = await upsertMainSiteContact({
+      workspaceId,
+      email: lead.email,
+      fullName: lead.business_name,
+      website: lead.website,
+      tags: nextTags,
+      source: "PixelOutreach — manual tag",
+    });
+    if (!result.ok) throw new Error(result.error ?? "Failed to sync contact");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
+      .from("leads")
+      .update({
+        main_site_tags: nextTags,
+        main_site_contact_id: result.contactId ?? null,
+      } as never)
+      .eq("id", lead.id);
+
+    return { ok: true, tags: nextTags, contactId: result.contactId ?? null };
+  });
+
+
 
