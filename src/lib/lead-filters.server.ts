@@ -120,6 +120,9 @@ export function buildPractitionerQueries(opts: {
   locations: string[];
   keywords: string[];
   platform?: PlatformName | null;
+  /** Optional custom search intent phrases (already quoted or bare). When provided,
+   *  they override the default coach/ecommerce intents so any audience works. */
+  intents?: string[];
 }): string[] {
   const niches = opts.niches.length ? opts.niches : [""];
   const locs = opts.locations.length ? opts.locations : [""];
@@ -129,7 +132,14 @@ export function buildPractitionerQueries(opts: {
   const ecommerce: PlatformName[] = ["Shopify"];
   const isEcom = !!platform && ecommerce.includes(platform);
 
-  const intents = isEcom
+  const customIntents = (opts.intents ?? [])
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((s) => (s.startsWith('"') || s.includes(" ") === false ? s : `"${s}"`));
+
+  const intents = customIntents.length
+    ? customIntents
+    : isEcom
     ? ['"add to cart"', '"shop now"', '"free shipping"', '"our collection"', '"shop all"']
     : ['"work with me"', '"book a call"', '"schedule a consultation"', '"1:1 coaching"', '"my services"'];
 
