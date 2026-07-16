@@ -206,6 +206,12 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
 
               <DemoSitePanel leadId={data.lead.id} />
 
+              <MainSiteTagPanel
+                leadId={data.lead.id}
+                email={data.lead.email}
+                tags={((data.lead as any).main_site_tags as string[] | null) ?? []}
+              />
+
               {data.drafts.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-2">Drafted emails</div>
