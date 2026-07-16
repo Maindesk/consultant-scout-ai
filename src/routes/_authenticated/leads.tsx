@@ -195,7 +195,10 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
                     </div>
                   )}
                   {(data.enrichment as any).website_signals && (
-                    <WebsiteSignalsPanel signals={(data.enrichment as any).website_signals} />
+                    <>
+                      <FeatureComparisonTable signals={(data.enrichment as any).website_signals} />
+                      <WebsiteSignalsPanel signals={(data.enrichment as any).website_signals} />
+                    </>
                   )}
                 </>
               )}
@@ -374,6 +377,156 @@ function WebsiteSignalsPanel({ signals }: { signals: any }) {
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+// Features every white-label platform (Simvoly/Maindesk-based) includes out of the box.
+// Compared against what we detected on the prospect's live site so the user can see —
+// at a glance — which paid third-party tools become redundant after switching.
+const PLATFORM_FEATURES: Array<{
+  label: string;
+  check: (s: any) => { has: boolean; via?: string | null };
+}> = [
+  {
+    label: "Booking & appointments",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "scheduling");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Email capture & newsletter",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "email_capture");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Forms & lead intake",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "forms");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Popups & exit-intent",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "popup");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Live chat",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "chat");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Payments & checkout",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "payments" || x.category === "ecommerce");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Memberships & courses",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "membership");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Testimonials & reviews",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "reviews");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "CRM & pipeline",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "crm");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Analytics",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "analytics");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Retargeting pixels",
+    check: (s) => {
+      const t = (s.tools ?? []).find((x: any) => x.category === "ads_pixel");
+      return { has: !!t, via: t?.name };
+    },
+  },
+  {
+    label: "Mobile-responsive",
+    check: (s) => ({ has: !!s?.page?.responsive, via: null }),
+  },
+  {
+    label: "SEO basics (H1 + OG image)",
+    check: (s) => ({ has: !!s?.page?.has_h1 && !!s?.page?.has_og_image, via: null }),
+  },
+];
+
+function FeatureComparisonTable({ signals }: { signals: any }) {
+  const rows = PLATFORM_FEATURES.map((f) => ({ label: f.label, ...f.check(signals) }));
+  const missing = rows.filter((r) => !r.has).length;
+  const stacked = rows.filter((r) => r.has && r.via).length;
+  return (
+    <div className="border-t pt-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium text-muted-foreground">Feature comparison</div>
+        <div className="text-[10px] text-muted-foreground">
+          {missing} gap{missing === 1 ? "" : "s"} · {stacked} tool{stacked === 1 ? "" : "s"} to consolidate
+        </div>
+      </div>
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/60">
+            <tr className="text-left">
+              <th className="px-3 py-2 font-medium">Feature</th>
+              <th className="px-3 py-2 font-medium">Their site</th>
+              <th className="px-3 py-2 font-medium">Your white-label</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.label} className="border-t border-border">
+                <td className="px-3 py-2">{r.label}</td>
+                <td className="px-3 py-2">
+                  {r.has ? (
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-amber-600">●</span>
+                      <span>{r.via ? `via ${r.via}` : "Yes"}</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-red-600">
+                      <span>✕</span>
+                      <span>Missing</span>
+                    </span>
+                  )}
+                </td>
+                <td className="px-3 py-2">
+                  <span className="inline-flex items-center gap-1 text-green-700">
+                    <span>✓</span>
+                    <span>Built-in</span>
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[10px] text-muted-foreground leading-relaxed">
+        <span className="text-red-600">✕ Missing</span> = gap on their site · <span className="text-amber-600">●</span> = using a paid 3rd-party tool your platform replaces · <span className="text-green-700">✓</span> = included in your white-label.
+      </p>
     </div>
   );
 }
