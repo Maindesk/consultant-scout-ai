@@ -110,6 +110,7 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
     locations: cfg.locations ?? [],
     keywords: cfg.keywords ?? [],
     platform: techStack[0] ?? null,
+    intents: (cfg as any).search_intents ?? [],
   });
 
   const perQuery = Math.max(5, Math.ceil((target * 4) / Math.max(queries.length, 1)));

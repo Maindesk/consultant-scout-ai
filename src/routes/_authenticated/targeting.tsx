@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listSearchConfigs, createSearchConfig, deleteSearchConfig } from "@/lib/targeting.functions";
+import { listSearchConfigs, createSearchConfig, deleteSearchConfig, expandAudience } from "@/lib/targeting.functions";
 import { discoverLeads } from "@/lib/leads.functions";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,16 +9,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Trash2, Search } from "lucide-react";
+import { Loader2, Trash2, Search, Sparkles, ChevronDown } from "lucide-react";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
 
 export const Route = createFileRoute("/_authenticated/targeting")({
   component: Targeting,
 });
 
-const NICHE_SUGGESTIONS = ["business coach", "life coach", "fitness coach", "executive coach", "marketing consultant", "operations consultant"];
 const PLATFORMS = [...KNOWN_PLATFORMS];
+
+const AUDIENCE_EXAMPLES = [
+  "Independent yoga studios in California that sell online class packs and want to grow membership.",
+  "Solo dentists in the UK still using an old WordPress site with no online booking.",
+  "Boutique Shopify skincare brands doing under $50k/mo that lean heavily on Instagram.",
+  "Executive coaches in North America charging $10k+ programs and running webinars.",
+];
 
 function Targeting() {
   const qc = useQueryClient();
@@ -26,25 +33,52 @@ function Targeting() {
   const create = useServerFn(createSearchConfig);
   const del = useServerFn(deleteSearchConfig);
   const discover = useServerFn(discoverLeads);
+  const expand = useServerFn(expandAudience);
 
   const { data: configs = [] } = useQuery({ queryKey: ["search_configs"], queryFn: () => list() });
 
+  const [description, setDescription] = useState("");
   const [name, setName] = useState("");
   const [niches, setNiches] = useState<string[]>([]);
-  const [nicheInput, setNicheInput] = useState("");
   const [locations, setLocations] = useState<string[]>([]);
-  const [locationInput, setLocationInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [keywordInput, setKeywordInput] = useState("");
+  const [intents, setIntents] = useState<string[]>([]);
   const [techStack, setTechStack] = useState<string[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [discoverLimits, setDiscoverLimits] = useState<Record<string, number>>({});
 
+  const expandMut = useMutation({
+    mutationFn: () => expand({ data: { description } }),
+    onSuccess: (r) => {
+      if (!name) setName(r.suggested_name || "New audience");
+      setNiches(r.niches ?? []);
+      setLocations(r.locations ?? []);
+      setKeywords(r.keywords ?? []);
+      setIntents(r.search_intents ?? []);
+      setShowAdvanced(true);
+      toast.success("Audience structured — review below and save.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not parse description"),
+  });
+
   const createMut = useMutation({
-    mutationFn: () => create({ data: { name, niches, locations, keywords, tech_stack: techStack } }),
+    mutationFn: () =>
+      create({
+        data: {
+          name,
+          niches,
+          locations,
+          keywords,
+          tech_stack: techStack,
+          audience_description: description || undefined,
+          search_intents: intents,
+        },
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["search_configs"] });
-      setName(""); setNiches([]); setLocations([]); setKeywords([]); setTechStack([]);
-      toast.success("Config created");
+      setDescription(""); setName(""); setNiches([]); setLocations([]); setKeywords([]); setIntents([]); setTechStack([]);
+      setShowAdvanced(false);
+      toast.success("Audience saved");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
@@ -58,18 +92,10 @@ function Targeting() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Discovery failed"),
   });
 
-
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["search_configs"] }),
   });
-
-  function addChip(v: string, arr: string[], setArr: (a: string[]) => void, setInput: (s: string) => void) {
-    const t = v.trim();
-    if (!t) return;
-    if (!arr.includes(t)) setArr([...arr, t]);
-    setInput("");
-  }
 
   function togglePlatform(p: string) {
     setTechStack((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
@@ -79,48 +105,55 @@ function Targeting() {
     <div className="p-8 max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Targeting</h1>
-        <p className="text-sm text-muted-foreground">Define who the AI should find.</p>
+        <p className="text-sm text-muted-foreground">
+          Describe your ideal prospect in plain English. The AI turns it into a search config — no keyword expertise needed.
+        </p>
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">New search config</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Describe your audience</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label>Name</Label>
-            <Input placeholder="e.g. US business coaches on Squarespace" value={name} onChange={(e) => setName(e.target.value)} />
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. Independent yoga studios in California that sell online class packs and want to grow membership."
+              rows={4}
+              className="resize-none"
+            />
+            <div className="mt-2 flex flex-wrap gap-1">
+              {AUDIENCE_EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  onClick={() => setDescription(ex)}
+                  className="text-xs text-muted-foreground hover:text-foreground border border-dashed px-2 py-1 rounded text-left"
+                >
+                  {ex.length > 60 ? ex.slice(0, 60) + "…" : ex}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <ChipInput
-            label="Niches"
-            value={niches}
-            input={nicheInput}
-            setInput={setNicheInput}
-            onAdd={(v) => addChip(v, niches, setNiches, setNicheInput)}
-            onRemove={(v) => setNiches(niches.filter((x) => x !== v))}
-            suggestions={NICHE_SUGGESTIONS}
-          />
-          <ChipInput
-            label="Locations (optional)"
-            value={locations}
-            input={locationInput}
-            setInput={setLocationInput}
-            onAdd={(v) => addChip(v, locations, setLocations, setLocationInput)}
-            onRemove={(v) => setLocations(locations.filter((x) => x !== v))}
-          />
-          <ChipInput
-            label="Extra keywords (optional)"
-            value={keywords}
-            input={keywordInput}
-            setInput={setKeywordInput}
-            onAdd={(v) => addChip(v, keywords, setKeywords, setKeywordInput)}
-            onRemove={(v) => setKeywords(keywords.filter((x) => x !== v))}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              onClick={() => expandMut.mutate()}
+              disabled={description.trim().length < 10 || expandMut.isPending}
+            >
+              {expandMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+              Structure with AI
+            </Button>
+            {intents.length > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {niches.length} niches · {intents.length} search intents · {keywords.length} keywords
+              </span>
+            )}
+          </div>
 
           <div>
             <Label>Website platform (optional)</Label>
-            <p className="text-xs text-muted-foreground mb-2">
-              Only keep leads whose site is built on one of these. Detected during enrichment.
-            </p>
+            <p className="text-xs text-muted-foreground mb-2">Only keep leads whose site is built on one of these.</p>
             <div className="flex flex-wrap gap-2">
               {PLATFORMS.map((p) => (
                 <button
@@ -139,20 +172,59 @@ function Targeting() {
             </div>
           </div>
 
-          <Button onClick={() => createMut.mutate()} disabled={!name || niches.length === 0 || createMut.isPending}>
-            Save config
+          {(intents.length > 0 || niches.length > 0 || showAdvanced) && (
+            <div className="pt-2 border-t space-y-4">
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((s) => !s)}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                <ChevronDown className={`w-3 h-3 transition ${showAdvanced ? "rotate-180" : ""}`} />
+                {showAdvanced ? "Hide" : "Review & tweak"} what the AI extracted
+              </button>
+
+              {showAdvanced && (
+                <div className="space-y-3">
+                  <div>
+                    <Label>Name</Label>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Audience name" />
+                  </div>
+                  <ChipView label="Niches" items={niches} onChange={setNiches} />
+                  <ChipView label="Locations" items={locations} onChange={setLocations} />
+                  <ChipView label="Extra keywords" items={keywords} onChange={setKeywords} />
+                  <ChipView
+                    label="Search intent phrases"
+                    hint="Snippets the AI expects to find on a real prospect's site."
+                    items={intents}
+                    onChange={setIntents}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <Button
+            onClick={() => createMut.mutate()}
+            disabled={!name || niches.length === 0 || createMut.isPending}
+            className="w-full"
+          >
+            {createMut.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Save audience
           </Button>
         </CardContent>
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">Saved configs</h2>
-        {configs.length === 0 && <p className="text-sm text-muted-foreground">No configs yet.</p>}
+        <h2 className="text-sm font-medium text-muted-foreground">Saved audiences</h2>
+        {configs.length === 0 && <p className="text-sm text-muted-foreground">No audiences yet.</p>}
         {configs.map((c) => (
           <Card key={c.id}>
             <CardContent className="pt-6 flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="font-medium">{c.name}</div>
+                {(c as any).audience_description && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">"{(c as any).audience_description}"</p>
+                )}
                 <div className="mt-2 flex flex-wrap gap-1">
                   {c.niches.map((n: string) => <Badge key={n} variant="secondary">{n}</Badge>)}
                   {c.locations.map((n: string) => <Badge key={"l-" + n} variant="outline">{n}</Badge>)}
@@ -193,38 +265,38 @@ function Targeting() {
   );
 }
 
-function ChipInput({
-  label, value, input, setInput, onAdd, onRemove, suggestions,
-}: {
-  label: string; value: string[]; input: string; setInput: (s: string) => void;
-  onAdd: (v: string) => void; onRemove: (v: string) => void; suggestions?: string[];
-}) {
+function ChipView({
+  label, items, onChange, hint,
+}: { label: string; items: string[]; onChange: (a: string[]) => void; hint?: string }) {
+  const [input, setInput] = useState("");
+  function add(v: string) {
+    const t = v.trim();
+    if (!t) return;
+    if (!items.includes(t)) onChange([...items, t]);
+    setInput("");
+  }
   return (
     <div>
       <Label>{label}</Label>
+      {hint && <p className="text-xs text-muted-foreground mb-1">{hint}</p>}
       <div className="flex gap-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onAdd(input); } }}
-          placeholder="Type and press Enter"
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(input); } }}
+          placeholder="Add and press Enter"
         />
-        <Button type="button" variant="outline" onClick={() => onAdd(input)}>Add</Button>
+        <Button type="button" variant="outline" onClick={() => add(input)}>Add</Button>
       </div>
-      {value.length > 0 && (
+      {items.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {value.map((v) => (
-            <button key={v} onClick={() => onRemove(v)} className="text-xs bg-secondary hover:bg-destructive hover:text-destructive-foreground px-2 py-1 rounded">
+          {items.map((v) => (
+            <button
+              key={v}
+              onClick={() => onChange(items.filter((x) => x !== v))}
+              className="text-xs bg-secondary hover:bg-destructive hover:text-destructive-foreground px-2 py-1 rounded"
+            >
               {v} ×
-            </button>
-          ))}
-        </div>
-      )}
-      {suggestions && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {suggestions.filter((s) => !value.includes(s)).map((s) => (
-            <button key={s} onClick={() => onAdd(s)} className="text-xs text-muted-foreground hover:text-foreground border border-dashed px-2 py-1 rounded">
-              + {s}
             </button>
           ))}
         </div>
