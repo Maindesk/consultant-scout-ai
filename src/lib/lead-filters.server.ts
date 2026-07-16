@@ -164,13 +164,16 @@ export function buildPractitionerQueries(opts: {
   ].join(" ");
 
   const queries: string[] = [];
+  const pick = (i: number) => intents[i % intents.length] ?? intents[0] ?? "";
   for (const n of niches) {
     for (const l of locs) {
       const base = [n, l, kw].filter(Boolean).join(" ");
-      queries.push(`${base} ${platformOp} ${intents[0]} ${neg}`.replace(/\s+/g, " ").trim());
-      queries.push(`${base} ${platformOp} (${intents[1]} OR ${intents[2]}) ${neg}`.replace(/\s+/g, " ").trim());
-      if (isEcom) {
-        queries.push(`${base} ${platformOp} ${intents[3]} ${neg}`.replace(/\s+/g, " ").trim());
+      queries.push(`${base} ${platformOp} ${pick(0)} ${neg}`.replace(/\s+/g, " ").trim());
+      if (intents.length > 1) {
+        queries.push(`${base} ${platformOp} (${pick(1)} OR ${pick(2)}) ${neg}`.replace(/\s+/g, " ").trim());
+      }
+      if (isEcom && intents.length > 3) {
+        queries.push(`${base} ${platformOp} ${pick(3)} ${neg}`.replace(/\s+/g, " ").trim());
       }
     }
   }
