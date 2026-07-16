@@ -21,6 +21,8 @@ export type WorkspaceSummary = {
   has_webhook_secret: boolean;
   platform_wl_domain: string | null;
   main_site_domain: string | null;
+  sync_replies_to_main_site: boolean;
+  reply_contact_default_tag: string;
 };
 
 export const getMyWorkspaces = createServerFn({ method: "GET" })
