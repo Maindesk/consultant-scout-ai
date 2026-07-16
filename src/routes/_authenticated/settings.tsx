@@ -55,6 +55,8 @@ function WorkspaceIntegrationsCard({ workspace }: { workspace: WorkspaceSummary 
   const [platformKey, setPlatformKey] = useState("");
   const [mainDomain, setMainDomain] = useState(workspace.main_site_domain ?? "");
   const [mainKey, setMainKey] = useState("");
+  const [syncReplies, setSyncReplies] = useState(workspace.sync_replies_to_main_site);
+  const [defaultTag, setDefaultTag] = useState(workspace.reply_contact_default_tag);
   const [webhookSecret, setWebhookSecret] = useState("");
 
   const saveMut = useMutation({
