@@ -70,6 +70,7 @@ export const discoverLeads = createServerFn({ method: "POST" })
       locations: cfg.locations ?? [],
       keywords: cfg.keywords ?? [],
       platform: platformHint,
+      intents: (cfg as any).search_intents ?? [],
     });
 
     // Over-fetch: junk filter + platform verification will drop many.
