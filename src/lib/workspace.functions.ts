@@ -56,6 +56,8 @@ export const getMyWorkspaces = createServerFn({ method: "GET" })
           has_webhook_secret: !!w.webhook_secret_ciphertext,
           platform_wl_domain: w.platform_wl_domain,
           main_site_domain: w.main_site_domain,
+          sync_replies_to_main_site: w.sync_replies_to_main_site ?? true,
+          reply_contact_default_tag: w.reply_contact_default_tag ?? "PixelOutreach Reply",
         } as WorkspaceSummary;
       })
       .filter(Boolean) as WorkspaceSummary[];
