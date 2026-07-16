@@ -195,7 +195,10 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
                     </div>
                   )}
                   {(data.enrichment as any).website_signals && (
-                    <WebsiteSignalsPanel signals={(data.enrichment as any).website_signals} />
+                    <>
+                      <FeatureComparisonTable signals={(data.enrichment as any).website_signals} />
+                      <WebsiteSignalsPanel signals={(data.enrichment as any).website_signals} />
+                    </>
                   )}
                 </>
               )}
