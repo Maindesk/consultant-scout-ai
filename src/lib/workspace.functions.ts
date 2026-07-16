@@ -21,6 +21,8 @@ export type WorkspaceSummary = {
   has_webhook_secret: boolean;
   platform_wl_domain: string | null;
   main_site_domain: string | null;
+  sync_replies_to_main_site: boolean;
+  reply_contact_default_tag: string;
 };
 
 export const getMyWorkspaces = createServerFn({ method: "GET" })
@@ -28,7 +30,7 @@ export const getMyWorkspaces = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<WorkspaceSummary[]> => {
     const { data: members, error: mErr } = await context.supabase
       .from("workspace_members")
-      .select("role, workspace_id, workspaces(id, name, slug, platform_wl_domain, main_site_domain, platform_client_key_ciphertext, main_site_api_key_ciphertext, webhook_secret_ciphertext)")
+      .select("role, workspace_id, workspaces(id, name, slug, platform_wl_domain, main_site_domain, platform_client_key_ciphertext, main_site_api_key_ciphertext, webhook_secret_ciphertext, sync_replies_to_main_site, reply_contact_default_tag)")
       .eq("user_id", context.userId);
     if (mErr) throw mErr;
 
@@ -54,6 +56,8 @@ export const getMyWorkspaces = createServerFn({ method: "GET" })
           has_webhook_secret: !!w.webhook_secret_ciphertext,
           platform_wl_domain: w.platform_wl_domain,
           main_site_domain: w.main_site_domain,
+          sync_replies_to_main_site: w.sync_replies_to_main_site ?? true,
+          reply_contact_default_tag: w.reply_contact_default_tag ?? "PixelOutreach Reply",
         } as WorkspaceSummary;
       })
       .filter(Boolean) as WorkspaceSummary[];
@@ -135,6 +139,8 @@ export const updateWorkspaceSettings = createServerFn({ method: "POST" })
     platform_client_key?: string | null; // plaintext; empty => clear
     main_site_api_key?: string | null;
     webhook_secret?: string | null;
+    sync_replies_to_main_site?: boolean;
+    reply_contact_default_tag?: string;
   }) => d)
   .handler(async ({ context, data }) => {
     // Authorization: must be admin/owner
@@ -150,6 +156,10 @@ export const updateWorkspaceSettings = createServerFn({ method: "POST" })
     if (data.name !== undefined) patch.name = data.name.trim();
     if (data.platform_wl_domain !== undefined) patch.platform_wl_domain = data.platform_wl_domain?.trim() || null;
     if (data.main_site_domain !== undefined) patch.main_site_domain = data.main_site_domain?.trim() || null;
+    if (data.sync_replies_to_main_site !== undefined) patch.sync_replies_to_main_site = data.sync_replies_to_main_site;
+    if (data.reply_contact_default_tag !== undefined) {
+      patch.reply_contact_default_tag = (data.reply_contact_default_tag || "PixelOutreach Reply").slice(0, 100);
+    }
 
     const { encryptSecret } = await import("./workspace-crypto.server");
     if (data.platform_client_key !== undefined) {

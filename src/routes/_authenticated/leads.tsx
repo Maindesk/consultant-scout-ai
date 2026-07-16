@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listLeads, enrichLead, getLead } from "@/lib/leads.functions";
+import { listLeads, enrichLead, getLead, pushLeadTagToMainSite } from "@/lib/leads.functions";
 import { draftEmailsForLead } from "@/lib/drafts.functions";
 import {
   provisionDemoSiteForLead,
@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Loader2, Sparkles, Mail, ExternalLink, Globe, KeyRound } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Sparkles, Mail, ExternalLink, Globe, KeyRound, Tag, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -205,6 +206,12 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
 
               <DemoSitePanel leadId={data.lead.id} />
 
+              <MainSiteTagPanel
+                leadId={data.lead.id}
+                email={data.lead.email}
+                tags={((data.lead as any).main_site_tags as string[] | null) ?? []}
+              />
+
               {data.drafts.length > 0 && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-2">Drafted emails</div>
@@ -302,6 +309,95 @@ function DemoSitePanel({ leadId }: { leadId: string }) {
     </div>
   );
 }
+
+function MainSiteTagPanel({
+  leadId,
+  email,
+  tags,
+}: {
+  leadId: string;
+  email: string | null;
+  tags: string[];
+}) {
+  const qc = useQueryClient();
+  const pushTag = useServerFn(pushLeadTagToMainSite);
+  const [value, setValue] = useState("");
+
+  const mut = useMutation({
+    mutationFn: (tag: string) => pushTag({ data: { lead_id: leadId, tag } }),
+    onSuccess: (res: any) => {
+      toast.success(`Contact synced. Tags: ${res.tags.join(", ")}`);
+      setValue("");
+      qc.invalidateQueries({ queryKey: ["lead", leadId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to push tag"),
+  });
+
+  const quickTags = ["Hot Lead", "Follow-up", "Nurture", "Not a fit"];
+
+  return (
+    <div className="rounded-lg border p-3 bg-muted/20 space-y-3">
+      <div className="flex items-center gap-2">
+        <Tag className="w-4 h-4 text-primary" />
+        <div className="text-xs font-semibold">Main site contact tag</div>
+      </div>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Push a tag to this lead's contact on your main marketing site. If the contact doesn't
+        exist yet, it will be created (email + name). Use these tags in your main-site
+        automations — nurture sequences, segments, or CRM stages.
+      </p>
+
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {tags.map((t) => (
+            <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+          ))}
+        </div>
+      )}
+
+      {!email ? (
+        <div className="text-xs text-amber-600">Enrich this lead first to capture an email.</div>
+      ) : (
+        <>
+          <div className="flex gap-1">
+            <Input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder="e.g. Interested — Q1"
+              className="h-8 text-xs"
+              maxLength={60}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && value.trim()) mut.mutate(value.trim());
+              }}
+            />
+            <Button
+              size="sm"
+              onClick={() => value.trim() && mut.mutate(value.trim())}
+              disabled={!value.trim() || mut.isPending}
+            >
+              {mut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {quickTags.map((t) => (
+              <button
+                key={t}
+                type="button"
+                disabled={mut.isPending || tags.includes(t)}
+                onClick={() => mut.mutate(t)}
+                className="text-[10px] px-2 py-0.5 rounded border hover:bg-primary/10 disabled:opacity-40"
+              >
+                + {t}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+
 
 
 function Section({ title, body }: { title: string; body?: string | null }) {
