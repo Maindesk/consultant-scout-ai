@@ -739,6 +739,7 @@ export type Database = {
       }
       search_configs: {
         Row: {
+          audience_description: string | null
           created_at: string
           id: string
           is_default: boolean
@@ -746,10 +747,12 @@ export type Database = {
           locations: string[]
           name: string
           niches: string[]
+          search_intents: string[]
           tech_stack: string[]
           user_id: string
         }
         Insert: {
+          audience_description?: string | null
           created_at?: string
           id?: string
           is_default?: boolean
@@ -757,10 +760,12 @@ export type Database = {
           locations?: string[]
           name: string
           niches?: string[]
+          search_intents?: string[]
           tech_stack?: string[]
           user_id: string
         }
         Update: {
+          audience_description?: string | null
           created_at?: string
           id?: string
           is_default?: boolean
@@ -768,6 +773,7 @@ export type Database = {
           locations?: string[]
           name?: string
           niches?: string[]
+          search_intents?: string[]
           tech_stack?: string[]
           user_id?: string
         }
