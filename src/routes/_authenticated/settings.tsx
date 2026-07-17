@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -9,6 +9,14 @@ import {
   testMainSiteApi,
   type WorkspaceSummary,
 } from "@/lib/workspace.functions";
+import {
+  getEmailSenderStatus,
+  saveEmailSender,
+  clearEmailSender,
+  testEmailSender,
+  runDomainHealthCheck,
+  type EmailProviderName,
+} from "@/lib/email-settings.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, XCircle, KeyRound, Tag } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, KeyRound, Tag, Mail, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
