@@ -20,7 +20,8 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { sendTransactionalEmail, textToHtml } = await import("@/lib/send-email.server");
+        const { sendWithWorkspaceProvider } = await import("@/lib/email-provider.server");
+        const { textToHtml } = await import("@/lib/send-email.server");
         const { getActiveWorkspaceIdForUser, checkQuota, recordUsage } = await import("@/lib/quota.server");
 
         const { data: due, error } = await supabaseAdmin
