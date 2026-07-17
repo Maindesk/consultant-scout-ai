@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -9,6 +9,14 @@ import {
   testMainSiteApi,
   type WorkspaceSummary,
 } from "@/lib/workspace.functions";
+import {
+  getEmailSenderStatus,
+  saveEmailSender,
+  clearEmailSender,
+  testEmailSender,
+  runDomainHealthCheck,
+  type EmailProviderName,
+} from "@/lib/email-settings.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, XCircle, KeyRound, Tag } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, KeyRound, Tag, Mail, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -40,7 +48,262 @@ function SettingsPage() {
       </div>
 
       {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {active && <EmailSenderCard workspace={active} />}
       {active && <WorkspaceIntegrationsCard workspace={active} />}
+    </div>
+  );
+}
+
+function EmailSenderCard({ workspace }: { workspace: WorkspaceSummary }) {
+  const qc = useQueryClient();
+  const status = useServerFn(getEmailSenderStatus);
+  const save = useServerFn(saveEmailSender);
+  const clear = useServerFn(clearEmailSender);
+  const testFn = useServerFn(testEmailSender);
+  const healthFn = useServerFn(runDomainHealthCheck);
+
+  const { data: cfg, isLoading } = useQuery({
+    queryKey: ["email-sender", workspace.id],
+    queryFn: () => status({ data: { workspace_id: workspace.id } }),
+  });
+
+  const [provider, setProvider] = useState<EmailProviderName>("resend");
+  const [apiKey, setApiKey] = useState("");
+  const [fromEmail, setFromEmail] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [testTo, setTestTo] = useState("");
+  const [testMsg, setTestMsg] = useState<null | { ok: boolean; message: string }>(null);
+
+  useEffect(() => {
+    if (cfg) {
+      setProvider((cfg.provider as EmailProviderName) ?? "resend");
+      setFromEmail(cfg.from_email ?? "");
+      setFromName(cfg.from_name ?? "");
+    }
+  }, [cfg]);
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      save({
+        data: {
+          workspace_id: workspace.id,
+          provider,
+          from_email: fromEmail,
+          from_name: fromName,
+          ...(apiKey ? { api_key: apiKey } : {}),
+        },
+      }),
+    onSuccess: () => {
+      setApiKey("");
+      qc.invalidateQueries({ queryKey: ["email-sender", workspace.id] });
+      toast.success("Sender saved");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Save failed"),
+  });
+
+  const clearMut = useMutation({
+    mutationFn: () => clear({ data: { workspace_id: workspace.id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email-sender", workspace.id] });
+      toast.success("Sender disconnected");
+    },
+  });
+
+  const healthMut = useMutation({
+    mutationFn: () => healthFn({ data: { workspace_id: workspace.id } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["email-sender", workspace.id] });
+      toast.success("Domain health checked");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Health check failed"),
+  });
+
+  const health = cfg?.health as null | {
+    domain: string;
+    score: number;
+    grade: string;
+    records: {
+      mx: { ok: boolean; values: string[] };
+      spf: { ok: boolean; value: string | null; note?: string };
+      dkim: { ok: boolean; found: string[]; note?: string };
+      dmarc: { ok: boolean; value: string | null; policy?: string };
+    };
+    recommendations: string[];
+  };
+
+  const scoreColor = (s: number) =>
+    s >= 90 ? "text-green-600" : s >= 75 ? "text-lime-600" : s >= 60 ? "text-amber-600" : s >= 40 ? "text-orange-600" : "text-red-600";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Mail className="w-4 h-4" /> Email Sender</CardTitle>
+        <CardDescription>
+          Connect your own sending provider and verified domain. Recipients will see mail coming from your brand,
+          and deliverability stays under your control.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4" />
+            <h3 className="text-sm font-semibold">Provider &amp; credentials</h3>
+            {cfg?.configured ? (
+              <Badge variant="outline" className="text-xs">connected · {cfg.provider}</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">not connected</Badge>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {(["resend", "sendgrid", "postmark"] as EmailProviderName[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setProvider(p)}
+                className={`rounded-md border px-3 py-2 text-sm capitalize text-left transition ${
+                  provider === p ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                }`}
+              >
+                <div className="font-medium">{p}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {p === "resend" && "resend.com"}
+                  {p === "sendgrid" && "sendgrid.com"}
+                  {p === "postmark" && "postmarkapp.com"}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs">
+                API key {cfg?.configured && <span className="text-muted-foreground">(leave blank to keep)</span>}
+              </Label>
+              <Input
+                type="password"
+                placeholder={cfg?.configured ? "••••••••" : "paste key"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {provider === "resend" && "Create at resend.com → API Keys"}
+                {provider === "sendgrid" && "Create at sendgrid.com → Settings → API Keys (Mail Send scope)"}
+                {provider === "postmark" && "Server API Token from postmarkapp.com"}
+              </p>
+            </div>
+            <div>
+              <Label className="text-xs">From name</Label>
+              <Input placeholder="Jane at Acme" value={fromName} onChange={(e) => setFromName(e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">From email (must be on a domain verified in your provider)</Label>
+              <Input placeholder="hi@yourdomain.com" value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 items-center">
+            <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !fromEmail || (!cfg?.configured && !apiKey)}>
+              {saveMut.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+              {cfg?.configured ? "Update sender" : "Connect sender"}
+            </Button>
+            {cfg?.configured && (
+              <>
+                <Input
+                  className="w-56 h-8 text-xs"
+                  placeholder="test recipient (defaults to your email)"
+                  value={testTo}
+                  onChange={(e) => setTestTo(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => setTestMsg(await testFn({ data: { workspace_id: workspace.id, to: testTo || undefined } }))}
+                >
+                  Send test
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => clearMut.mutate()}>Disconnect</Button>
+              </>
+            )}
+            {testMsg?.ok && <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{testMsg.message}</span>}
+            {testMsg && !testMsg.ok && <span className="text-xs text-destructive flex items-center gap-1"><XCircle className="w-3 h-3" />{testMsg.message}</span>}
+          </div>
+        </section>
+
+        <Separator />
+
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            <h3 className="text-sm font-semibold">Sending domain health</h3>
+            {cfg?.from_domain && <Badge variant="outline" className="text-xs font-mono">{cfg.from_domain}</Badge>}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Live DNS check of MX, SPF, DKIM, and DMARC for your sending domain. Higher score = better inbox placement.
+          </p>
+
+          {!cfg?.from_domain && (
+            <p className="text-xs text-muted-foreground italic">Save a from-email first to enable domain health checks.</p>
+          )}
+
+          {cfg?.from_domain && (
+            <div className="flex items-center gap-3">
+              <Button size="sm" variant="outline" onClick={() => healthMut.mutate()} disabled={healthMut.isPending}>
+                <RefreshCw className={`w-3 h-3 mr-1 ${healthMut.isPending ? "animate-spin" : ""}`} />
+                {health ? "Re-check" : "Check now"}
+              </Button>
+              {cfg.health_checked_at && (
+                <span className="text-[10px] text-muted-foreground">
+                  Last checked: {new Date(cfg.health_checked_at).toLocaleString()}
+                </span>
+              )}
+            </div>
+          )}
+
+          {health && (
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center gap-4">
+                <div className={`text-4xl font-bold ${scoreColor(health.score)}`}>{health.score}</div>
+                <div>
+                  <div className="text-sm font-semibold">Grade {health.grade}</div>
+                  <div className="text-xs text-muted-foreground">out of 100</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <HealthRow label="MX" ok={health.records.mx.ok} detail={health.records.mx.values.slice(0, 2).join(", ") || "not found"} />
+                <HealthRow label="SPF" ok={health.records.spf.ok} detail={health.records.spf.value?.slice(0, 60) ?? "not found"} note={health.records.spf.note} />
+                <HealthRow label="DKIM" ok={health.records.dkim.ok} detail={health.records.dkim.found.length ? `selectors: ${health.records.dkim.found.join(", ")}` : "not found"} note={health.records.dkim.note} />
+                <HealthRow label="DMARC" ok={health.records.dmarc.ok} detail={health.records.dmarc.value?.slice(0, 60) ?? "not found"} note={health.records.dmarc.policy ? `policy=${health.records.dmarc.policy}` : undefined} />
+              </div>
+
+              {health.recommendations.length > 0 && (
+                <div className="border-t pt-3 space-y-1">
+                  <div className="text-xs font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-amber-500" /> Recommendations</div>
+                  <ul className="text-xs text-muted-foreground list-disc ml-5 space-y-1">
+                    {health.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      </CardContent>
+    </Card>
+  );
+}
+
+function HealthRow({ label, ok, detail, note }: { label: string; ok: boolean; detail: string; note?: string }) {
+  return (
+    <div className={`rounded border p-2 ${ok ? "border-green-500/30 bg-green-500/5" : "border-red-500/30 bg-red-500/5"}`}>
+      <div className="flex items-center gap-1 font-semibold">
+        {ok ? <CheckCircle2 className="w-3 h-3 text-green-600" /> : <XCircle className="w-3 h-3 text-red-600" />}
+        {label}
+      </div>
+      <div className="text-[10px] text-muted-foreground font-mono break-all">{detail}</div>
+      {note && <div className="text-[10px] text-amber-600 mt-0.5">{note}</div>}
     </div>
   );
 }

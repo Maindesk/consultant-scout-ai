@@ -20,7 +20,8 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { sendTransactionalEmail, textToHtml } = await import("@/lib/send-email.server");
+        const { sendWithWorkspaceProvider } = await import("@/lib/email-provider.server");
+        const { textToHtml } = await import("@/lib/send-email.server");
         const { getActiveWorkspaceIdForUser, checkQuota, recordUsage } = await import("@/lib/quota.server");
 
         const { data: due, error } = await supabaseAdmin
@@ -75,16 +76,19 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
             .eq("user_id", item.user_id)
             .maybeSingle();
 
-          const fromName = bp?.sender_name ?? "Outreach";
-          const fromEmail = bp?.sender_email;
-          if (!fromEmail) {
+          // Sender identity: workspace's connected provider wins; business_profile is a display fallback.
+          const { loadWorkspaceSender } = await import("@/lib/email-provider.server");
+          const sender = await loadWorkspaceSender(workspaceId);
+          if (!sender) {
             await supabaseAdmin
               .from("outbound_queue")
-              .update({ status: "failed", last_error: "No sender_email in business profile" })
+              .update({ status: "failed", last_error: "No email sender connected in Settings → Email Sender" })
               .eq("id", item.id);
-            results.push({ id: item.id, ok: false, error: "no sender_email" });
+            results.push({ id: item.id, ok: false, error: "no sender" });
             continue;
           }
+          const fromName = sender.from_name ?? bp?.sender_name ?? "Outreach";
+          const fromEmail = sender.from_email;
 
           try {
             // Optional: on email step 3, inject a fresh 15-min SSO edit link for
@@ -119,14 +123,16 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
               }
             }
 
-            const { message_id } = await sendTransactionalEmail({
+            const { message_id } = await sendWithWorkspaceProvider(workspaceId, {
               to: lead.email,
-              from: `${fromName} <${fromEmail}>`,
               subject,
               html: textToHtml(bodyText),
               text: bodyText,
-              template_name: "cold-outreach",
               reply_to: fromEmail,
+              headers: {
+                "X-PixelOutreach-Template": "cold-outreach",
+                "X-PixelOutreach-From-Name": fromName,
+              },
             });
 
 
