@@ -951,6 +951,13 @@ export type Database = {
       workspaces: {
         Row: {
           created_at: string
+          email_api_key_ciphertext: string | null
+          email_domain_health: Json | null
+          email_domain_health_checked_at: string | null
+          email_from_domain: string | null
+          email_from_email: string | null
+          email_from_name: string | null
+          email_provider: string | null
           id: string
           main_site_api_key_ciphertext: string | null
           main_site_domain: string | null
@@ -966,6 +973,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          email_api_key_ciphertext?: string | null
+          email_domain_health?: Json | null
+          email_domain_health_checked_at?: string | null
+          email_from_domain?: string | null
+          email_from_email?: string | null
+          email_from_name?: string | null
+          email_provider?: string | null
           id?: string
           main_site_api_key_ciphertext?: string | null
           main_site_domain?: string | null
@@ -981,6 +995,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          email_api_key_ciphertext?: string | null
+          email_domain_health?: Json | null
+          email_domain_health_checked_at?: string | null
+          email_from_domain?: string | null
+          email_from_email?: string | null
+          email_from_name?: string | null
+          email_provider?: string | null
           id?: string
           main_site_api_key_ciphertext?: string | null
           main_site_domain?: string | null
