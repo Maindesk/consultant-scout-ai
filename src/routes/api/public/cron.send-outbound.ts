@@ -120,14 +120,16 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
               }
             }
 
-            const { message_id } = await sendTransactionalEmail({
+            const { message_id } = await sendWithWorkspaceProvider(workspaceId, {
               to: lead.email,
-              from: `${fromName} <${fromEmail}>`,
               subject,
               html: textToHtml(bodyText),
               text: bodyText,
-              template_name: "cold-outreach",
               reply_to: fromEmail,
+              headers: {
+                "X-PixelOutreach-Template": "cold-outreach",
+                "X-PixelOutreach-From-Name": fromName,
+              },
             });
 
 
