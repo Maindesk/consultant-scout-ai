@@ -1,17 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertWorkspaceAdmin } from "./email-settings-helpers";
 
 export type EmailProviderName = "resend" | "sendgrid" | "postmark";
 
-async function assertAdmin(supabase: any, userId: string, workspaceId: string) {
-  const { data: m } = await supabase
-    .from("workspace_members")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
-  if (!m || !["owner", "admin"].includes(m.role)) throw new Error("Forbidden");
-}
 
 export interface EmailSenderStatus {
   configured: boolean;
@@ -56,7 +48,7 @@ export const saveEmailSender = createServerFn({ method: "POST" })
     from_name?: string | null;
   }) => d)
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.supabase, context.userId, data.workspace_id);
+    await assertWorkspaceAdmin(context.supabase, context.userId, data.workspace_id);
     if (!["resend", "sendgrid", "postmark"].includes(data.provider)) {
       throw new Error("Unsupported provider");
     }
@@ -92,7 +84,7 @@ export const clearEmailSender = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspace_id: string }) => d)
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.supabase, context.userId, data.workspace_id);
+    await assertWorkspaceAdmin(context.supabase, context.userId, data.workspace_id);
     const { error } = await context.supabase
       .from("workspaces")
       .update({
@@ -113,7 +105,7 @@ export const testEmailSender = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspace_id: string; to?: string }) => d)
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.supabase, context.userId, data.workspace_id);
+    await assertWorkspaceAdmin(context.supabase, context.userId, data.workspace_id);
     const { loadWorkspaceSender, sendWithWorkspaceProvider } = await import("./email-provider.server");
     const cfg = await loadWorkspaceSender(data.workspace_id);
     if (!cfg) return { ok: false, message: "No sender configured yet" };
@@ -136,7 +128,7 @@ export const runDomainHealthCheck = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { workspace_id: string; domain?: string }) => d)
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.supabase, context.userId, data.workspace_id);
+    await assertWorkspaceAdmin(context.supabase, context.userId, data.workspace_id);
     const { data: ws } = await context.supabase
       .from("workspaces")
       .select("email_from_domain, email_provider")
