@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   getMyWorkspaces,
+  createWorkspace,
   updateWorkspaceSettings,
   testPlatformApi,
   testMainSiteApi,
@@ -33,12 +34,27 @@ export const Route = createFileRoute("/_authenticated/settings")({
 
 function SettingsPage() {
   const list = useServerFn(getMyWorkspaces);
+  const create = useServerFn(createWorkspace);
+  const qc = useQueryClient();
   const { data: workspaces, isLoading } = useQuery({
     queryKey: ["workspaces"],
     queryFn: () => list(),
   });
+  const [name, setName] = useState("My Workspace");
+  const [creating, setCreating] = useState(false);
 
   const active = workspaces?.find((w) => w.is_active) ?? workspaces?.[0];
+  const empty = !isLoading && (workspaces?.length ?? 0) === 0;
+
+  async function onCreate() {
+    setCreating(true);
+    try {
+      await create({ data: { name: name.trim() || "My Workspace" } });
+      await qc.invalidateQueries({ queryKey: ["workspaces"] });
+    } finally {
+      setCreating(false);
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -48,6 +64,20 @@ function SettingsPage() {
       </div>
 
       {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+      {empty && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Create your workspace</CardTitle>
+            <CardDescription>You need a workspace to configure integrations, email sender, and automations.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex gap-2">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Workspace name" />
+            <Button onClick={onCreate} disabled={creating}>
+              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
       {active && <EmailSenderCard workspace={active} />}
       {active && <WorkspaceIntegrationsCard workspace={active} />}
     </div>
