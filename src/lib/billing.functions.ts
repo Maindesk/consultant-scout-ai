@@ -12,10 +12,11 @@ export const getMyBilling = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: counter } = await supabaseAdmin
       .from("usage_counters")
-      .select("ai_credits_used, emails_used, leads_discovered_used")
+      .select("ai_credits_used, emails_used, leads_discovered_used, overage_leads_used")
       .eq("workspace_id", workspaceId)
       .eq("period_start", sub.current_period_start)
       .maybeSingle();
+    const overageLeads = counter?.overage_leads_used ?? 0;
     return {
       workspace_id: workspaceId,
       subscription: sub,
@@ -23,6 +24,8 @@ export const getMyBilling = createServerFn({ method: "GET" })
         ai_credits_used: counter?.ai_credits_used ?? 0,
         emails_used: counter?.emails_used ?? 0,
         leads_discovered_used: counter?.leads_discovered_used ?? 0,
+        overage_leads_used: overageLeads,
+        overage_cents: overageLeads * (sub.plan.overage_price_cents_per_lead ?? 0),
       },
     };
   });
