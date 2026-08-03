@@ -13,6 +13,7 @@ export interface WorkspaceSub {
   current_period_start: string;
   current_period_end: string;
   trial_end: string | null;
+  overage_enabled: boolean;
   plan: {
     code: string;
     name: string;
@@ -20,6 +21,7 @@ export interface WorkspaceSub {
     leads_monthly: number;
     ai_credits_monthly: number;
     emails_monthly: number;
+    overage_price_cents_per_lead: number;
   };
 }
 
