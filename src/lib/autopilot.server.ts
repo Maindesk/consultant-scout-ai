@@ -11,7 +11,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
-import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+import { getLovableGateway, EXTRACT_MODEL, WRITE_MODEL } from "./ai-gateway.server";
 import { detectPlatform, detectPlatformDetailed } from "./platform-detect.server";
 import { isJunkLead, buildPractitionerQueries } from "./lead-filters.server";
 import type { PlatformName } from "./platforms";
@@ -213,7 +213,7 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
       }
 
       const { output, usage: enrichUsage } = await generateText({
-        model: gateway(CHAT_MODEL),
+        model: gateway(EXTRACT_MODEL),
         output: Output.object({ schema: EnrichmentSchema }),
         prompt: `Analyze this business's website and extract structured intel.
 
@@ -268,7 +268,7 @@ ${md.slice(0, 15000) || "(no content)"}`,
   for (const lead of enrichedLeads) {
     try {
       const { output, usage: draftUsage } = await generateText({
-        model: gateway(CHAT_MODEL),
+        model: gateway(WRITE_MODEL),
         output: Output.object({ schema: SequenceSchema }),
         prompt: `Personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
 

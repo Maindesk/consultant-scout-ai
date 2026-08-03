@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
-import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+import { getLovableGateway, WRITE_MODEL } from "./ai-gateway.server";
 
 function extractJson(text: string): unknown {
   const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
@@ -82,7 +82,7 @@ export const draftEmailsForLead = createServerFn({ method: "POST" })
     let usage: { totalTokens?: number } | undefined;
     try {
     const r = await generateText({
-      model: gateway(CHAT_MODEL),
+      model: gateway(WRITE_MODEL),
       output: Output.object({ schema: SequenceSchema }),
       prompt: `You are writing a highly personalized cold outreach sequence from ${bp.sender_name ?? "the sender"} to a ${lead.niche ?? "business owner"}.
 

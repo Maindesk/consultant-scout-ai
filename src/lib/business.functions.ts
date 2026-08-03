@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+import { getLovableGateway, WRITE_MODEL } from "./ai-gateway.server";
 import { getFirecrawl } from "./firecrawl.server";
 
 export const getBusinessProfile = createServerFn({ method: "GET" })
@@ -168,7 +168,7 @@ ${combined.slice(0, 30000) || "(no content)"}
 
     try {
       const { output } = await generateText({
-        model: gateway(CHAT_MODEL),
+        model: gateway(WRITE_MODEL),
         output: Output.object({
           schema: z.object({
             ai_summary: z.string(),

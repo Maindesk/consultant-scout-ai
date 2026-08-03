@@ -1,6 +1,6 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+import { getLovableGateway, EXTRACT_MODEL } from "./ai-gateway.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { LeadStage } from "./pipeline";
 
@@ -32,7 +32,7 @@ export async function classifyAndSuggest(input: {
 
   const gateway = getLovableGateway();
   const { output } = await generateText({
-    model: gateway(CHAT_MODEL),
+    model: gateway(EXTRACT_MODEL),
     output: Output.object({ schema: ReplySchema }),
     prompt: `Classify a cold outreach reply, draft a response, AND decide what pipeline stage the lead should move to.
 
