@@ -46,7 +46,7 @@ export async function getWorkspaceSubscription(workspaceId: string): Promise<Wor
   const { data } = await supabaseAdmin
     .from("subscriptions")
     .select(
-      "workspace_id, plan_code, status, current_period_start, current_period_end, trial_end, plans(code, name, price_usd_monthly, leads_monthly, ai_credits_monthly, emails_monthly)",
+      "workspace_id, plan_code, status, current_period_start, current_period_end, trial_end, overage_enabled, plans(code, name, price_usd_monthly, leads_monthly, ai_credits_monthly, emails_monthly, overage_price_cents_per_lead)",
     )
     .eq("workspace_id", workspaceId)
     .maybeSingle();
