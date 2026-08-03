@@ -35,7 +35,7 @@ export const listPlans = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data } = await context.supabase
       .from("plans")
-      .select("id, code, name, price_usd_monthly, leads_monthly, ai_credits_monthly, emails_monthly, sort_order")
+      .select("id, code, name, price_usd_monthly, leads_monthly, ai_credits_monthly, emails_monthly, overage_price_cents_per_lead, sort_order")
       .eq("is_active", true)
       .order("sort_order");
     return data ?? [];
