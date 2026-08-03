@@ -431,10 +431,12 @@ function Pricing() {
                 <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.leads.toLocaleString()} leads/mo</li>
                 <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.ai.toLocaleString()} AI credits</li>
                 <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.emails.toLocaleString()} emails/mo</li>
+                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.overage} per extra lead after that</li>
                 {t.features.map((f) => (
                   <li key={f} className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {f}</li>
                 ))}
               </ul>
+
               <Link to="/auth" className="mt-8 block">
                 <Button className="w-full" variant={t.featured ? "default" : "outline"} size="lg">
                   Start free trial
