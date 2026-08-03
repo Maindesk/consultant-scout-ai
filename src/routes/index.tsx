@@ -393,18 +393,19 @@ function UseCases() {
 /* ----------------------------- PRICING ----------------------------- */
 function Pricing() {
   const tiers = [
-    { code: "starter", name: "Starter", price: 49, tagline: "Test the waters", leads: 200, ai: 5000, emails: 1000, features: ["1 workspace", "Autopilot discovery", "AI email drafting", "Unified inbox"] },
-    { code: "growth", name: "Growth", price: 149, tagline: "Most popular", leads: 1000, ai: 25000, emails: 5000, features: ["Everything in Starter", "Auto-provisioned demos", "SSO link injection", "Pipeline forecasting", "Priority support"], featured: true },
-    { code: "scale", name: "Scale", price: 399, tagline: "For serious operators", leads: 5000, ai: 100000, emails: 25000, features: ["Everything in Growth", "Custom integrations", "Dedicated onboarding", "Revenue attribution", "SLA"] },
+    { code: "starter", name: "Starter", price: 49, tagline: "Test the waters", leads: 300, ai: 5000, emails: 1200, overage: "$0.20", features: ["1 workspace", "Autopilot discovery", "AI email drafting", "Unified inbox"] },
+    { code: "growth", name: "Growth", price: 149, tagline: "Most popular", leads: 1200, ai: 20000, emails: 4800, overage: "$0.15", features: ["Everything in Starter", "Auto-provisioned demos", "SSO link injection", "Pipeline forecasting", "Priority support"], featured: true },
+    { code: "scale", name: "Scale", price: 399, tagline: "For serious operators", leads: 3000, ai: 50000, emails: 12000, overage: "$0.12", features: ["Everything in Growth", "Custom integrations", "Dedicated onboarding", "Revenue attribution", "SLA"] },
   ];
   return (
     <section id="pricing" className="py-24 md:py-32">
       <div className="max-w-7xl mx-auto px-6">
         <SectionHeader
           eyebrow="Pricing"
-          title="Start free. Scale when it works."
-          subtitle="7-day free trial on every plan. No credit card. Cancel anytime."
+          title="Pay for leads worked, not seats."
+          subtitle="7-day free trial on every plan. No credit card. Never hard-stopped — go past your allowance and extra leads simply bill per lead."
         />
+
         <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {tiers.map((t) => (
             <div
