@@ -120,6 +120,8 @@ function BillingPage() {
                     <Feat>{p.leads_monthly.toLocaleString()} leads / mo</Feat>
                     <Feat>{p.ai_credits_monthly.toLocaleString()} AI credits</Feat>
                     <Feat>{p.emails_monthly.toLocaleString()} emails / mo</Feat>
+                    <Feat>${((p.overage_price_cents_per_lead ?? 0) / 100).toFixed(2)} per extra lead</Feat>
+
                     <Button
                       className="w-full mt-3"
                       disabled={isCurrent || changeMut.isPending}
