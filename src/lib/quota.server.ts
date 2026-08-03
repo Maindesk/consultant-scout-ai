@@ -59,6 +59,10 @@ export interface QuotaCheck {
   used: number;
   limit: number;
   remaining: number;
+  /** true when the request is allowed but billed as pay-as-you-go overage. */
+  overage?: boolean;
+  /** cents charged per extra lead when `overage` is true. */
+  overageCents?: number;
   message?: string;
 }
 
@@ -98,6 +102,19 @@ export async function checkQuota(workspaceId: string, kind: UsageKind, amount = 
   const used = (counter?.[USED_COL[kind]] ?? 0) as number;
   const remaining = Math.max(0, limit - used);
   if (used + amount > limit) {
+    // Leads are the metered unit: keep running on pay-as-you-go instead of hard-stopping.
+    const overageCents = sub.plan.overage_price_cents_per_lead ?? 0;
+    if (kind === "leads_discovered" && sub.status === "active" && sub.overage_enabled && overageCents > 0) {
+      return {
+        ok: true,
+        used,
+        limit,
+        remaining,
+        overage: true,
+        overageCents,
+        message: `Plan allowance used (${used}/${limit}). Extra leads bill at $${(overageCents / 100).toFixed(2)} each.`,
+      };
+    }
     return {
       ok: false,
       used,
@@ -115,14 +132,38 @@ export async function recordUsage(
 ) {
   const sub = await getWorkspaceSubscription(workspaceId);
   if (!sub) return;
+
+  const leads = patch.leads ?? 0;
+  let overageLeads = 0;
+  if (leads > 0) {
+    const { data: counter } = await supabaseAdmin
+      .from("usage_counters")
+      .select("leads_discovered_used")
+      .eq("workspace_id", workspaceId)
+      .eq("period_start", sub.current_period_start)
+      .maybeSingle();
+    const before = counter?.leads_discovered_used ?? 0;
+    const after = before + leads;
+    overageLeads = Math.max(0, after - sub.plan.leads_monthly) - Math.max(0, before - sub.plan.leads_monthly);
+  }
+
   await supabaseAdmin.rpc("increment_usage", {
     _workspace_id: workspaceId,
     _period_start: sub.current_period_start,
     _period_end: sub.current_period_end,
     _ai: patch.ai ?? 0,
     _emails: patch.emails ?? 0,
-    _leads: patch.leads ?? 0,
+    _leads: leads,
   });
+
+  if (overageLeads > 0) {
+    await supabaseAdmin.rpc("increment_overage_leads", {
+      _workspace_id: workspaceId,
+      _period_start: sub.current_period_start,
+      _period_end: sub.current_period_end,
+      _leads: overageLeads,
+    });
+  }
 }
 
 /** 1 AI credit ≈ 100 tokens (rough). Used to convert generateText usage → billed credits. */
