@@ -625,6 +625,7 @@ export type Database = {
           is_active: boolean
           leads_monthly: number
           name: string
+          overage_price_cents_per_lead: number
           price_usd_monthly: number
           sort_order: number
         }
@@ -637,6 +638,7 @@ export type Database = {
           is_active?: boolean
           leads_monthly: number
           name: string
+          overage_price_cents_per_lead?: number
           price_usd_monthly: number
           sort_order?: number
         }
@@ -649,6 +651,7 @@ export type Database = {
           is_active?: boolean
           leads_monthly?: number
           name?: string
+          overage_price_cents_per_lead?: number
           price_usd_monthly?: number
           sort_order?: number
         }
@@ -801,6 +804,7 @@ export type Database = {
           current_period_end: string
           current_period_start: string
           id: string
+          overage_enabled: boolean
           plan_code: string
           provider: string | null
           provider_customer_id: string | null
@@ -816,6 +820,7 @@ export type Database = {
           current_period_end?: string
           current_period_start?: string
           id?: string
+          overage_enabled?: boolean
           plan_code: string
           provider?: string | null
           provider_customer_id?: string | null
@@ -831,6 +836,7 @@ export type Database = {
           current_period_end?: string
           current_period_start?: string
           id?: string
+          overage_enabled?: boolean
           plan_code?: string
           provider?: string | null
           provider_customer_id?: string | null
@@ -879,6 +885,7 @@ export type Database = {
           emails_used: number
           id: string
           leads_discovered_used: number
+          overage_leads_used: number
           period_end: string
           period_start: string
           updated_at: string
@@ -890,6 +897,7 @@ export type Database = {
           emails_used?: number
           id?: string
           leads_discovered_used?: number
+          overage_leads_used?: number
           period_end: string
           period_start: string
           updated_at?: string
@@ -901,6 +909,7 @@ export type Database = {
           emails_used?: number
           id?: string
           leads_discovered_used?: number
+          overage_leads_used?: number
           period_end?: string
           period_start?: string
           updated_at?: string
@@ -1025,6 +1034,15 @@ export type Database = {
       has_workspace_role: {
         Args: { _role: string; _user_id: string; _workspace_id: string }
         Returns: boolean
+      }
+      increment_overage_leads: {
+        Args: {
+          _leads: number
+          _period_end: string
+          _period_start: string
+          _workspace_id: string
+        }
+        Returns: undefined
       }
       increment_usage: {
         Args: {
