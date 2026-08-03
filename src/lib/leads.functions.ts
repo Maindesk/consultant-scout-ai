@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
 import { getFirecrawl, extractDomain } from "./firecrawl.server";
-import { getLovableGateway, CHAT_MODEL } from "./ai-gateway.server";
+import { getLovableGateway, EXTRACT_MODEL } from "./ai-gateway.server";
 import { detectPlatform, detectPlatformDetailed } from "./platform-detect.server";
 import { isJunkLead, buildPractitionerQueries } from "./lead-filters.server";
 import type { PlatformName } from "./platforms";
@@ -268,7 +268,7 @@ ${markdown.slice(0, 15000) || "(no content)"}
 `;
     try {
       const res = await generateText({
-        model: gateway(CHAT_MODEL),
+        model: gateway(EXTRACT_MODEL),
         output: Output.object({ schema: EnrichmentSchema }),
         prompt,
       });
