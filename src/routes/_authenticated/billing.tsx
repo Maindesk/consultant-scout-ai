@@ -75,12 +75,30 @@ function BillingPage() {
             </Button>
           )}
         </CardHeader>
-        <CardContent className="grid md:grid-cols-3 gap-6">
-          <UsageBlock label="Leads discovered" used={usage.leads_discovered_used} limit={plan.leads_monthly} />
-          <UsageBlock label="AI credits" used={usage.ai_credits_used} limit={plan.ai_credits_monthly} />
-          <UsageBlock label="Emails sent" used={usage.emails_used} limit={plan.emails_monthly} />
+        <CardContent className="space-y-4">
+          <div className="grid md:grid-cols-3 gap-6">
+            <UsageBlock label="Leads discovered" used={usage.leads_discovered_used} limit={plan.leads_monthly} />
+            <UsageBlock label="AI credits" used={usage.ai_credits_used} limit={plan.ai_credits_monthly} />
+            <UsageBlock label="Emails sent" used={usage.emails_used} limit={plan.emails_monthly} />
+          </div>
+          <div className="rounded-lg border bg-muted/30 px-4 py-3 text-sm flex items-center justify-between">
+            <div>
+              <div className="font-medium">Pay-as-you-go leads</div>
+              <div className="text-xs text-muted-foreground">
+                Past your allowance, extra leads keep flowing at $
+                {((plan.overage_price_cents_per_lead ?? 0) / 100).toFixed(2)} each instead of stopping.
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-semibold">{usage.overage_leads_used.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">
+                ${(usage.overage_cents / 100).toFixed(2)} this period
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Available plans</h2>
