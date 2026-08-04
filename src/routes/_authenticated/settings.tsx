@@ -18,6 +18,7 @@ import {
   runDomainHealthCheck,
   type EmailProviderName,
 } from "@/lib/email-settings.functions";
+import { getMyBilling, getUsageAlertPrefs, saveUsageAlertPrefs } from "@/lib/billing.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, CheckCircle2, XCircle, KeyRound, Tag, Mail, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, KeyRound, Tag, Mail, ShieldCheck, RefreshCw, AlertTriangle, Gauge, BellRing } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   component: SettingsPage,
@@ -78,11 +79,166 @@ function SettingsPage() {
           </CardContent>
         </Card>
       )}
+      {active && <UsageCard />}
       {active && <EmailSenderCard workspace={active} />}
       {active && <WorkspaceIntegrationsCard workspace={active} />}
     </div>
   );
 }
+
+/* ----------------------------- USAGE & ALERTS ----------------------------- */
+function UsageBar({ label, used, limit, warn }: { label: string; used: number; limit: number; warn: number }) {
+  const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const over = used > limit;
+  const near = !over && pct >= warn;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between text-sm">
+        <span className="font-medium">{label}</span>
+        <span className="tabular-nums text-muted-foreground">
+          {used.toLocaleString("en-US")} / {limit.toLocaleString("en-US")}
+        </span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${
+            over ? "bg-destructive" : near ? "bg-amber-500" : "bg-primary"
+          }`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="text-[11px] text-muted-foreground">
+        {over ? `${(used - limit).toLocaleString("en-US")} over allowance` : `${pct}% used`}
+      </div>
+    </div>
+  );
+}
+
+function UsageCard() {
+  const loadBilling = useServerFn(getMyBilling);
+  const loadPrefs = useServerFn(getUsageAlertPrefs);
+  const savePrefs = useServerFn(saveUsageAlertPrefs);
+  const qc = useQueryClient();
+
+  const { data: billing, isLoading } = useQuery({ queryKey: ["billing"], queryFn: () => loadBilling() });
+  const { data: prefs } = useQuery({ queryKey: ["usage_alert_prefs"], queryFn: () => loadPrefs() });
+
+  const [form, setForm] = useState({ enabled: true, threshold_pct: 80, email: "" });
+  useEffect(() => {
+    if (prefs) setForm({ enabled: prefs.enabled, threshold_pct: prefs.threshold_pct, email: prefs.email });
+  }, [prefs]);
+
+  const save = useMutation({
+    mutationFn: (patch: typeof form) => savePrefs({ data: patch }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["usage_alert_prefs"] });
+      toast.success("Usage alerts updated");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to save"),
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6"><Loader2 className="w-4 h-4 animate-spin" /></CardContent>
+      </Card>
+    );
+  }
+  if (!billing) return null;
+
+  const { subscription: sub, usage } = billing;
+  const periodEnd = new Date(sub.current_period_end);
+  const overageCents = usage.overage_cents ?? 0;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Gauge className="w-4 h-4" /> Usage this period</CardTitle>
+        <CardDescription>
+          {sub.plan.name} plan · resets {periodEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-5 md:grid-cols-3">
+          <UsageBar label="Leads" used={usage.leads_discovered_used} limit={sub.plan.leads_monthly} warn={form.threshold_pct} />
+          <UsageBar label="AI credits" used={usage.ai_credits_used} limit={sub.plan.ai_credits_monthly} warn={form.threshold_pct} />
+          <UsageBar label="Emails" used={usage.emails_used} limit={sub.plan.emails_monthly} warn={form.threshold_pct} />
+        </div>
+
+        {usage.overage_leads_used > 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <div>
+              <div className="font-medium">
+                {usage.overage_leads_used.toLocaleString("en-US")} leads billed as overage
+              </div>
+              <div className="text-xs mt-0.5">
+                ${(overageCents / 100).toFixed(2)} extra this period at $
+                {((sub.plan.overage_price_cents_per_lead ?? 0) / 100).toFixed(2)} per lead.
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Separator />
+
+        <div className="space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm font-medium flex items-center gap-2">
+                <BellRing className="w-4 h-4" /> Notify me before overage
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
+                Get an email when your lead usage crosses your threshold, and again the moment you hit 100% and
+                pay-as-you-go pricing kicks in. Sent from your connected sending domain.
+              </p>
+            </div>
+            <Switch
+              checked={form.enabled}
+              onCheckedChange={(v) => {
+                const next = { ...form, enabled: v };
+                setForm(next);
+                save.mutate(next);
+              }}
+            />
+          </div>
+
+          {form.enabled && (
+            <div className="grid gap-4 md:grid-cols-[160px_1fr_auto] md:items-end">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Warn me at</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min={50}
+                    max={99}
+                    value={form.threshold_pct}
+                    onChange={(e) => setForm({ ...form, threshold_pct: Number(e.target.value) })}
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Send alerts to</Label>
+                <Input
+                  type="email"
+                  placeholder="Defaults to your account email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+              <Button onClick={() => save.mutate(form)} disabled={save.isPending}>
+                {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 
 function EmailSenderCard({ workspace }: { workspace: WorkspaceSummary }) {
   const qc = useQueryClient();
