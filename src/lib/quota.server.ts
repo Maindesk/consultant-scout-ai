@@ -164,6 +164,11 @@ export async function recordUsage(
       _leads: overageLeads,
     });
   }
+
+  if (leads > 0) {
+    const { maybeSendUsageAlert } = await import("./usage-alerts.server");
+    await maybeSendUsageAlert(workspaceId, sub);
+  }
 }
 
 /** 1 AI credit ≈ 100 tokens (rough). Used to convert generateText usage → billed credits. */
