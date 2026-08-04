@@ -18,6 +18,7 @@ import {
   Layers,
   Workflow,
   Lock,
+  X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
