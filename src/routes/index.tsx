@@ -428,9 +428,9 @@ function Pricing() {
                 <span className="text-muted-foreground">/mo</span>
               </div>
               <ul className="mt-6 space-y-2 text-sm">
-                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.leads.toLocaleString()} leads/mo</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.ai.toLocaleString()} AI credits</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.emails.toLocaleString()} emails/mo</li>
+                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {fmt(t.leads)} leads/mo</li>
+                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {fmt(t.ai)} AI credits</li>
+                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {fmt(t.emails)} emails/mo</li>
                 <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.overage} per extra lead after that</li>
                 {t.features.map((f) => (
                   <li key={f} className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {f}</li>
