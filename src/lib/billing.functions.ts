@@ -107,3 +107,45 @@ export const cancelMyPlan = createServerFn({ method: "POST" })
       .eq("workspace_id", workspaceId);
     return { ok: true };
   });
+
+/** Usage-alert preferences for the active workspace (pre-overage notification). */
+export const getUsageAlertPrefs = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { getActiveWorkspaceIdForUser } = await import("./quota.server");
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
+    if (!workspaceId) return null;
+    const { data } = await context.supabase
+      .from("workspaces")
+      .select("usage_alert_enabled, usage_alert_threshold_pct, usage_alert_email")
+      .eq("id", workspaceId)
+      .maybeSingle();
+    if (!data) return null;
+    return {
+      enabled: data.usage_alert_enabled,
+      threshold_pct: data.usage_alert_threshold_pct,
+      email: data.usage_alert_email ?? "",
+    };
+  });
+
+export const saveUsageAlertPrefs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { enabled: boolean; threshold_pct: number; email: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { getActiveWorkspaceIdForUser } = await import("./quota.server");
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
+    if (!workspaceId) throw new Error("No workspace");
+    const pct = Math.min(99, Math.max(50, Math.round(data.threshold_pct)));
+    const email = data.email.trim();
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("Enter a valid email address");
+    const { error } = await context.supabase
+      .from("workspaces")
+      .update({
+        usage_alert_enabled: data.enabled,
+        usage_alert_threshold_pct: pct,
+        usage_alert_email: email || null,
+      })
+      .eq("id", workspaceId);
+    if (error) throw new Error(error.message);
+    return { ok: true, threshold_pct: pct };
+  });
