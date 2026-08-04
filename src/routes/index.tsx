@@ -393,6 +393,115 @@ function UseCases() {
   );
 }
 
+/* ----------------------------- COMPARISON ----------------------------- */
+function Comparison() {
+  const rows: { label: string; detail: string; us: boolean | string; them: boolean | string }[] = [
+    { label: "Built for white-label partners", detail: "Copy, targeting and demos framed around signing users to your platform", us: true, them: false },
+    { label: "Direct connection to your platform", detail: "API-connected: create real accounts, sites and demos in your own white-label", us: true, them: false },
+    { label: "Auto-provisioned demo site per prospect", detail: "A personalized preview built on your platform before the first reply", us: true, them: false },
+    { label: "One-click SSO edit links in emails", detail: "Prospects land inside your builder already logged in", us: true, them: false },
+    { label: "Tech-stack verified leads", detail: "Every lead confirmed to run the platform you replace", us: true, them: "Manual lists" },
+    { label: "Deep site enrichment", detail: "Sitemap crawl, third-party tools, speed and responsiveness signals", us: true, them: "Basic firmographics" },
+    { label: "Feature-gap driven copy", detail: "AI writes from what's missing on their site, not a template variable", us: true, them: "{{first_name}} tokens" },
+    { label: "Replies sync to your main site CRM", detail: "Contacts and tags pushed straight into your marketing site automations", us: true, them: false },
+    { label: "Bring your own sending domain", detail: "Resend, SendGrid or Postmark with live domain health scoring", us: true, them: true },
+    { label: "Per-lead pricing you can forecast", detail: "Pay for leads processed, transparent overage, no seat tax", us: true, them: "Per seat + per inbox" },
+  ];
+
+  const Cell = ({ v, accent }: { v: boolean | string; accent?: boolean }) =>
+    typeof v === "string" ? (
+      <span className="text-xs text-muted-foreground">{v}</span>
+    ) : v ? (
+      <span
+        className={
+          accent
+            ? "inline-flex w-6 h-6 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            : "inline-flex w-6 h-6 items-center justify-center rounded-full bg-muted text-foreground"
+        }
+      >
+        <Check className="w-3.5 h-3.5" strokeWidth={3} />
+      </span>
+    ) : (
+      <span className="inline-flex w-6 h-6 items-center justify-center rounded-full border border-border text-muted-foreground">
+        <X className="w-3.5 h-3.5" />
+      </span>
+    );
+
+  return (
+    <section id="comparison" className="py-24 md:py-32">
+      <div className="max-w-6xl mx-auto px-6">
+        <SectionHeader
+          eyebrow="Comparison"
+          title="Not another sequencer"
+          subtitle="Instantly, Lemlist and Smartlead send email. PixelOutreach signs users up to your white-label — because it's wired directly into your platform."
+        />
+
+        <div className="mt-16 overflow-hidden rounded-2xl border border-border bg-card">
+          {/* header */}
+          <div className="grid grid-cols-[1fr_auto_auto] md:grid-cols-[1fr_180px_180px] items-center gap-4 px-5 md:px-8 py-5 border-b border-border bg-muted/30">
+            <div className="text-xs uppercase tracking-[0.16em] font-semibold text-muted-foreground">
+              Capability
+            </div>
+            <div className="text-center">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-gradient px-3 py-1 text-xs font-semibold text-white shadow-brand">
+                <Sparkles className="w-3 h-3" /> PixelOutreach
+              </div>
+            </div>
+            <div className="text-center text-xs font-semibold text-muted-foreground">
+              Instantly / Lemlist
+            </div>
+          </div>
+
+          {rows.map((r, i) => (
+            <div
+              key={r.label}
+              className={`grid grid-cols-[1fr_auto_auto] md:grid-cols-[1fr_180px_180px] items-center gap-4 px-5 md:px-8 py-4 ${
+                i % 2 ? "bg-muted/10" : ""
+              }`}
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-medium">{r.label}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground leading-relaxed">{r.detail}</div>
+              </div>
+              <div className="flex justify-center"><Cell v={r.us} accent /></div>
+              <div className="flex justify-center"><Cell v={r.them} /></div>
+            </div>
+          ))}
+        </div>
+
+        {/* white-label advantage callouts */}
+        <div className="mt-8 grid md:grid-cols-3 gap-4">
+          {[
+            {
+              icon: Layers,
+              title: "Your platform is the product",
+              body: "Every email, demo and follow-up drives one outcome: a new paying user inside your white-label — not a booked call you still have to close.",
+            },
+            {
+              icon: Workflow,
+              title: "Wired into your backend",
+              body: "API-connected to your platform and main site: accounts and demo sites created automatically, replies synced as tagged contacts into your existing automations.",
+            },
+            {
+              icon: Lock,
+              title: "Fully white-labeled",
+              body: "Your domain, your sender, your brand end to end. Prospects never see a third-party tool anywhere in the journey.",
+            },
+          ].map((c) => (
+            <div key={c.title} className="rounded-2xl border border-border bg-card p-6">
+              <div className="w-10 h-10 rounded-xl bg-brand-gradient-soft flex items-center justify-center">
+                <c.icon className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="mt-4 text-base font-semibold">{c.title}</h3>
+              <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{c.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ----------------------------- PRICING ----------------------------- */
 function Pricing() {
   const tiers = [
