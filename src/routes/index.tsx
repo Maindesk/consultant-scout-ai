@@ -46,6 +46,7 @@ function Landing() {
       <Features />
       <Outcomes />
       <UseCases />
+      <Comparison />
       <Pricing />
       <FAQ />
       <FinalCTA />
