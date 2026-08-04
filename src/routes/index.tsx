@@ -34,6 +34,8 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
+const fmt = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
 function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
