@@ -978,6 +978,11 @@ export type Database = {
           slug: string
           sync_replies_to_main_site: boolean
           updated_at: string
+          usage_alert_email: string | null
+          usage_alert_enabled: boolean
+          usage_alert_last_pct: number
+          usage_alert_period_start: string | null
+          usage_alert_threshold_pct: number
           webhook_secret_ciphertext: string | null
         }
         Insert: {
@@ -1000,6 +1005,11 @@ export type Database = {
           slug: string
           sync_replies_to_main_site?: boolean
           updated_at?: string
+          usage_alert_email?: string | null
+          usage_alert_enabled?: boolean
+          usage_alert_last_pct?: number
+          usage_alert_period_start?: string | null
+          usage_alert_threshold_pct?: number
           webhook_secret_ciphertext?: string | null
         }
         Update: {
@@ -1022,6 +1032,11 @@ export type Database = {
           slug?: string
           sync_replies_to_main_site?: boolean
           updated_at?: string
+          usage_alert_email?: string | null
+          usage_alert_enabled?: boolean
+          usage_alert_last_pct?: number
+          usage_alert_period_start?: string | null
+          usage_alert_threshold_pct?: number
           webhook_secret_ciphertext?: string | null
         }
         Relationships: []
