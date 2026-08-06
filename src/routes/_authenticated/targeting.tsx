@@ -264,7 +264,15 @@ function Targeting() {
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">Saved audiences</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-sm font-medium text-muted-foreground">Saved audiences</h2>
+          <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
+            <Switch id="auto-process" checked={autoProcess} onCheckedChange={setAutoProcess} disabled={discoverMut.isPending} />
+            <Label htmlFor="auto-process" className="text-xs font-normal">
+              Auto-enrich &amp; draft emails for every lead found
+            </Label>
+          </div>
+        </div>
         {configs.length === 0 && <p className="text-sm text-muted-foreground">No audiences yet.</p>}
         {configs.map((c) => (
           <Card key={c.id}>
