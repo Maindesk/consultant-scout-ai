@@ -84,6 +84,11 @@ const TOOL_PATTERNS: Array<{ name: string; category: SignalCategory; patterns: R
   { name: "Jotform", category: "forms", patterns: [/jotform\.com/i] },
   { name: "Google Forms", category: "forms", patterns: [/docs\.google\.com\/forms/i] },
   { name: "Tally", category: "forms", patterns: [/tally\.so/i] },
+  { name: "Formspree", category: "forms", patterns: [/formspree\.io/i] },
+  { name: "Basin", category: "forms", patterns: [/usebasin\.com/i] },
+  { name: "Wufoo", category: "forms", patterns: [/wufoo\.com/i] },
+  { name: "Paperform", category: "forms", patterns: [/paperform\.co/i] },
+  { name: "Netlify Forms", category: "forms", patterns: [/data-netlify(?:=|-)/i] },
 
   // Membership / community
   { name: "MemberSpace", category: "membership", patterns: [/memberspace\.com/i] },
@@ -245,6 +250,17 @@ function visibleMarkup(src: string): string {
     .replace(/<template[\s\S]*?<\/template>/gi, " ");
 }
 
+/** Proves a native form by its controls, independent of builder-specific CSS. */
+function hasStructuredLeadForm(src: string): boolean {
+  const forms = src.match(/<form[\s>][\s\S]*?<\/form>/gi) ?? [];
+  return forms.some((form) => {
+    const controls = form.match(/<(?:input|select|textarea)\b/gi)?.length ?? 0;
+    const hasIdentityField = /<(?:input|select|textarea)[^>]+(?:type|name|id|aria-label|placeholder)=["'][^"']*(?:email|name|phone|company|message|inquiry|enquiry)/i.test(form);
+    const hasSubmit = /<(?:button|input)[^>]+type=["']submit["']/i.test(form) || /<button\b[^>]*>[\s\S]{0,100}\b(?:send|submit|apply|contact|request|continue)\b/i.test(form);
+    return controls >= 2 && hasIdentityField && hasSubmit;
+  });
+}
+
 /** Categories only ever detectable through scripts in <head>/<body>. */
 const SCRIPT_ONLY: CapabilityKey[] = ["analytics", "ads_pixel", "crm"];
 
@@ -268,8 +284,9 @@ function extractMeta(html: string, name: string): string | null {
 }
 
 
-export function detectSignals(html?: string | null): Omit<WebsiteSignals, "performance"> {
+export function detectSignals(html?: string | null, renderedText?: string | null): Omit<WebsiteSignals, "performance"> {
   const src = html ?? "";
+  const semantic = renderedText ?? "";
   const tools: DetectedTool[] = [];
   const seen = new Set<string>();
   for (const t of TOOL_PATTERNS) {
@@ -306,6 +323,18 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
 
   const visible = visibleMarkup(src);
 
+  // Firecrawl's rendered markdown contains browser-visible form controls even
+  // when a site builder serializes those controls inside hydration JSON. Treat
+  // only high-specificity combinations as proof, never a lone word like “form”.
+  const semanticFormEvidence =
+    /\b(?:fill out|complete|submit) (?:the |this |our )?form\b/i.test(semantic) ||
+    (/\b(?:first name|full name|your name)\b/i.test(semantic) &&
+      /\bemail(?: address)?\b/i.test(semantic) &&
+      /\b(?:send message|submit|apply now|request (?:a )?(?:quote|consultation))\b/i.test(semantic));
+  const semanticEmailCaptureEvidence =
+    /\b(?:subscribe|sign up|join)\b.{0,80}\b(?:newsletter|mailing list|email list|updates)\b/i.test(semantic) &&
+    /\bemail(?: address)?\b/i.test(semantic);
+
   const capabilities = {} as Record<CapabilityKey, Capability>;
   const setCap = (k: CapabilityKey, c: Capability) => (capabilities[k] = c);
 
@@ -327,6 +356,18 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
       setCap(key, { state: "present", via: null, evidence: `built into their site — ${strong.note}` });
       continue;
     }
+    if (key === "forms" && hasStructuredLeadForm(visible)) {
+      setCap(key, { state: "present", via: null, evidence: "built into their site — structured lead form with contact fields and submit action" });
+      continue;
+    }
+    if (key === "forms" && semanticFormEvidence) {
+      setCap(key, { state: "present", via: null, evidence: "rendered page contains a complete lead/contact form" });
+      continue;
+    }
+    if (key === "email_capture" && semanticEmailCaptureEvidence) {
+      setCap(key, { state: "present", via: null, evidence: "rendered page contains an email signup form" });
+      continue;
+    }
     const weak = rules.find((r) => r.strength === "weak" && match(r));
     if (weak) {
       setCap(key, { state: "unknown", via: null, evidence: `unconfirmed — ${weak.note}` });
@@ -334,6 +375,8 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
     }
     if (SCRIPT_ONLY.includes(key)) {
       setCap(key, { state: "absent", via: null, evidence: "no tracking/CRM script in page source" });
+    } else if (key === "forms" && !/===\s+https?:\/\/[^\s]*(?:contact|apply|intake|quote|consult|get-in-touch|reach-(?:us|out)|lets-talk|connect)/i.test(semantic)) {
+      setCap(key, { state: "unknown", via: null, evidence: "no contact or intake page was scanned" });
     } else if (rules.length) {
       setCap(key, { state: "absent", via: null, evidence: "no widget, link or markup for it on the pages we scanned" });
     } else {
@@ -395,8 +438,8 @@ export async function measurePerformance(url: string): Promise<WebsiteSignals["p
   }
 }
 
-export async function analyzeWebsite(url: string, html?: string | null): Promise<WebsiteSignals> {
-  const base = detectSignals(html);
+export async function analyzeWebsite(url: string, html?: string | null, renderedText?: string | null): Promise<WebsiteSignals> {
+  const base = detectSignals(html, renderedText);
   const performance = await measurePerformance(url);
   return { ...base, performance };
 }

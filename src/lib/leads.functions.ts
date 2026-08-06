@@ -252,7 +252,7 @@ export const enrichLead = createServerFn({ method: "POST" })
     }
 
     const { analyzeWebsite, summarizeSignalsForPrompt } = await import("./website-signals.server");
-    const signals = await analyzeWebsite(lead.website, html);
+    const signals = await analyzeWebsite(lead.website, html, markdown);
 
     const { getActiveWorkspaceIdForUser, checkQuota, recordUsage, estimateAiCredits } = await import("./quota.server");
     const workspaceId = await getActiveWorkspaceIdForUser(context.userId);

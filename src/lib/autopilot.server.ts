@@ -236,7 +236,7 @@ ${md.slice(0, 15000) || "(no content)"}`,
 
 
       const { analyzeWebsite } = await import("./website-signals.server");
-      const signals = await analyzeWebsite(lead.website, html);
+      const signals = await analyzeWebsite(lead.website, html, md);
 
       await supabaseAdmin.from("lead_enrichments").upsert(
         {
