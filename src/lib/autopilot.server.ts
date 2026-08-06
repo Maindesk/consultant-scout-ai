@@ -316,8 +316,10 @@ Prospect:
 - Audience: ${lead.enrichment.target_audience}
 - Pain points: ${JSON.stringify(lead.enrichment.pain_points)}
 - Embedded 3rd-party tools stitched onto their site: ${JSON.stringify(lead.signals?.tools ?? [])}
-- Site gaps: ${JSON.stringify(lead.signals?.gaps ?? [])}
+- VERIFIED gaps (evidence-checked, safe to reference): ${JSON.stringify(lead.signals?.gaps ?? [])}
+- Feature verdicts (present = they already have it, absent = verified gap, unknown = NEVER claim it is missing): ${JSON.stringify(lead.signals?.capabilities ?? {})}
 - Perf: ${JSON.stringify(lead.signals?.performance ?? {})}
+- NEVER state or imply a feature is missing unless its verdict is "absent". If a verdict is "unknown"${lead.signals?.html_usable === false ? " (and note: their page markup could not be read at all, so treat EVERY feature as unknown)" : ""}, stay away from that claim entirely.
 
 Campaign goal: ${EMAIL_GOAL_LABELS[goal as keyof typeof EMAIL_GOAL_LABELS] ?? goal}
 ${goalFraming(goal)}
