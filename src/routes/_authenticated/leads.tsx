@@ -276,24 +276,19 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
 function DemoSitePanel({ leadId }: { leadId: string }) {
   const qc = useQueryClient();
   const getSite = useServerFn(getDemoSiteForLead);
-  const listTpls = useServerFn(listAvailableTemplates);
   const provision = useServerFn(provisionDemoSiteForLead);
   const editLink = useServerFn(getFreshEditLink);
   const approve = useServerFn(setDemoSiteApproval);
-  const [tpl, setTpl] = useState<string | undefined>(undefined);
+  const [selected, setSelected] = useState<PickedTemplate | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
 
   const { data: site } = useQuery({
     queryKey: ["demo-site", leadId],
     queryFn: () => getSite({ data: { lead_id: leadId } }),
   });
-  const { data: tplRes } = useQuery({
-    queryKey: ["demo-templates"],
-    queryFn: () => listTpls(),
-    staleTime: 5 * 60 * 1000,
-  });
-  const templates = tplRes?.templates ?? [];
-  const selected = templates.find((t) => t.id === tpl);
+  const tpl = selected?.id;
+
 
   const provMut = useMutation({
     mutationFn: () =>
