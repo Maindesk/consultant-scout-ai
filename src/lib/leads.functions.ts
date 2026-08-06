@@ -173,7 +173,12 @@ export const discoverLeads = createServerFn({ method: "POST" })
     if (workspaceId && inserted.length > 0) {
       await recordUsage(workspaceId, { leads: inserted.length });
     }
-    return { discovered: inserted.length, rejected: rejected.length, sample_rejected: rejected.slice(0, 5) };
+    return {
+      discovered: inserted.length,
+      rejected: rejected.length,
+      sample_rejected: rejected.slice(0, 5),
+      lead_ids: inserted.map((r) => r.id as string),
+    };
   });
 
 

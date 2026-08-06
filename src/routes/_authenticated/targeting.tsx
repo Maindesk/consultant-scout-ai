@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listSearchConfigs, createSearchConfig, deleteSearchConfig, expandAudience } from "@/lib/targeting.functions";
-import { discoverLeads } from "@/lib/leads.functions";
+import { discoverLeads, enrichLead } from "@/lib/leads.functions";
+import { draftEmailsForLead } from "@/lib/drafts.functions";
+import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +35,8 @@ function Targeting() {
   const create = useServerFn(createSearchConfig);
   const del = useServerFn(deleteSearchConfig);
   const discover = useServerFn(discoverLeads);
+  const enrich = useServerFn(enrichLead);
+  const draft = useServerFn(draftEmailsForLead);
   const expand = useServerFn(expandAudience);
 
   const { data: configs = [] } = useQuery({ queryKey: ["search_configs"], queryFn: () => list() });
@@ -46,6 +50,8 @@ function Targeting() {
   const [techStack, setTechStack] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [discoverLimits, setDiscoverLimits] = useState<Record<string, number>>({});
+  const [autoProcess, setAutoProcess] = useState(true);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const expandMut = useMutation({
     mutationFn: () => expand({ data: { description } }),
@@ -84,13 +90,56 @@ function Targeting() {
   });
 
   const discoverMut = useMutation({
-    mutationFn: ({ id, limit }: { id: string; limit: number }) => discover({ data: { search_config_id: id, limit } }),
-    onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: ["leads"] });
-      toast.success(`Discovered ${r.discovered} new leads${r.rejected ? ` — ${r.rejected} filtered` : ""}`);
+    mutationFn: async ({ id, limit }: { id: string; limit: number }) => {
+      const r = await discover({ data: { search_config_id: id, limit } });
+      if (!autoProcess || r.lead_ids.length === 0) return { ...r, enriched: 0, drafted: 0 };
+
+      let enriched = 0;
+      let drafted = 0;
+      let done = 0;
+      const ids = r.lead_ids;
+      setProgress({ done: 0, total: ids.length });
+
+      const CONCURRENCY = 3;
+      const queue = [...ids];
+      const worker = async () => {
+        while (queue.length) {
+          const leadId = queue.shift()!;
+          try {
+            const res: any = await enrich({ data: { lead_id: leadId } });
+            enriched += 1;
+            // Only draft when we actually have a reachable contact.
+            if (res?.email) {
+              try {
+                await draft({ data: { lead_id: leadId } });
+                drafted += 1;
+              } catch { /* drafting is best-effort */ }
+            }
+          } catch { /* skip failed lead */ }
+          done += 1;
+          setProgress({ done, total: ids.length });
+          qc.invalidateQueries({ queryKey: ["leads"] });
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker));
+      setProgress(null);
+      return { ...r, enriched, drafted };
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Discovery failed"),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["pending_drafts"] });
+      toast.success(
+        autoProcess
+          ? `${r.discovered} leads found · ${r.enriched} enriched · ${r.drafted} with drafted sequences`
+          : `Discovered ${r.discovered} new leads${r.rejected ? ` — ${r.rejected} filtered` : ""}`,
+      );
+    },
+    onError: (e) => {
+      setProgress(null);
+      toast.error(e instanceof Error ? e.message : "Discovery failed");
+    },
   });
+
 
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
@@ -215,7 +264,15 @@ function Targeting() {
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-medium text-muted-foreground">Saved audiences</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-sm font-medium text-muted-foreground">Saved audiences</h2>
+          <div className="flex items-center gap-2 rounded-lg border px-3 py-2">
+            <Switch id="auto-process" checked={autoProcess} onCheckedChange={setAutoProcess} disabled={discoverMut.isPending} />
+            <Label htmlFor="auto-process" className="text-xs font-normal">
+              Auto-enrich &amp; draft emails for every lead found
+            </Label>
+          </div>
+        </div>
         {configs.length === 0 && <p className="text-sm text-muted-foreground">No audiences yet.</p>}
         {configs.map((c) => (
           <Card key={c.id}>
@@ -251,7 +308,11 @@ function Targeting() {
                   disabled={discoverMut.isPending}
                 >
                   {discoverMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-                  Discover
+                  {discoverMut.isPending && progress
+                    ? `Processing ${progress.done}/${progress.total}`
+                    : autoProcess
+                      ? "Find + enrich + draft"
+                      : "Discover"}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => delMut.mutate(c.id)}>
                   <Trash2 className="w-4 h-4" />
