@@ -86,13 +86,56 @@ function Targeting() {
   });
 
   const discoverMut = useMutation({
-    mutationFn: ({ id, limit }: { id: string; limit: number }) => discover({ data: { search_config_id: id, limit } }),
-    onSuccess: (r) => {
-      qc.invalidateQueries({ queryKey: ["leads"] });
-      toast.success(`Discovered ${r.discovered} new leads${r.rejected ? ` — ${r.rejected} filtered` : ""}`);
+    mutationFn: async ({ id, limit }: { id: string; limit: number }) => {
+      const r = await discover({ data: { search_config_id: id, limit } });
+      if (!autoProcess || r.lead_ids.length === 0) return { ...r, enriched: 0, drafted: 0 };
+
+      let enriched = 0;
+      let drafted = 0;
+      let done = 0;
+      const ids = r.lead_ids;
+      setProgress({ done: 0, total: ids.length });
+
+      const CONCURRENCY = 3;
+      const queue = [...ids];
+      const worker = async () => {
+        while (queue.length) {
+          const leadId = queue.shift()!;
+          try {
+            const res: any = await enrich({ data: { lead_id: leadId } });
+            enriched += 1;
+            // Only draft when we actually have a reachable contact.
+            if (res?.lead?.email) {
+              try {
+                await draft({ data: { lead_id: leadId } });
+                drafted += 1;
+              } catch { /* drafting is best-effort */ }
+            }
+          } catch { /* skip failed lead */ }
+          done += 1;
+          setProgress({ done, total: ids.length });
+          qc.invalidateQueries({ queryKey: ["leads"] });
+        }
+      };
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker));
+      setProgress(null);
+      return { ...r, enriched, drafted };
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Discovery failed"),
+    onSuccess: (r: any) => {
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      qc.invalidateQueries({ queryKey: ["pending_drafts"] });
+      toast.success(
+        autoProcess
+          ? `${r.discovered} leads found · ${r.enriched} enriched · ${r.drafted} with drafted sequences`
+          : `Discovered ${r.discovered} new leads${r.rejected ? ` — ${r.rejected} filtered` : ""}`,
+      );
+    },
+    onError: (e) => {
+      setProgress(null);
+      toast.error(e instanceof Error ? e.message : "Discovery failed");
+    },
   });
+
 
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
