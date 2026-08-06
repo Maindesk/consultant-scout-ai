@@ -50,6 +50,8 @@ function Targeting() {
   const [techStack, setTechStack] = useState<string[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [discoverLimits, setDiscoverLimits] = useState<Record<string, number>>({});
+  const [autoProcess, setAutoProcess] = useState(true);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const expandMut = useMutation({
     mutationFn: () => expand({ data: { description } }),
