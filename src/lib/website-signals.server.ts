@@ -211,7 +211,10 @@ const NATIVE_EVIDENCE: Partial<Record<CapabilityKey, NativeRule[]>> = {
   payments: [
     // Real storefront surfaces only.
     { re: /<(?:a|button|form)[^>]+(?:href|action)=["'][^"']*\/(?:cart\/add|checkout|cart)(?:[\/"'?#]|$)/i, note: "cart or checkout link", strength: "strong", scope: "visible" },
-    { re: /(<[^>]+class=["'][^"']*shopify-payment-button|<form[^>]+action=["'][^"']*\/cart\/add|add-to-cart-button|snipcart-add-item|woocommerce-Price-amount)/i, note: "add-to-cart / buy button", strength: "strong", scope: "visible" },
+    // Must be an actual buy control. Squarespace puts "tweak-…-add-to-cart-button-…"
+    // template flags on <body> of every site, store or not — that is not evidence.
+    { re: /<(?:a|button|input|form)[^>]*(?:class|id|data-[a-z-]+)=["'][^"']*(?:shopify-payment-button|add-to-cart|snipcart-add-item|single_add_to_cart|sqs-add-to-cart)/i, note: "add-to-cart / buy button", strength: "strong", scope: "visible" },
+    { re: /<[^>]+class=["'][^"']*woocommerce-Price-amount/i, note: "product pricing on a store page", strength: "strong", scope: "visible" },
     { re: /"@type"\s*:\s*"(?:Product|Offer)"[\s\S]{0,400}?"price"/i, note: "product offer schema", strength: "strong", scope: "raw" },
     { re: /(itemprop=["']price["']|sqs-money-native)/i, note: "price markup only", strength: "weak", scope: "visible" },
   ],
