@@ -84,7 +84,24 @@ export async function provisionDemoSite(input: {
   ]);
   if (!lead) throw new Error("Lead not found");
 
+  // Fall back to the template chosen on the audience this lead came from.
+  let templateId = input.templateId ?? null;
+  let funnelTemplateId = input.funnelTemplateId ?? null;
+  if (!templateId && !funnelTemplateId && lead.search_config_id) {
+    const { data: cfg } = await supabaseAdmin
+      .from("search_configs")
+      .select("demo_template_id, demo_template_type")
+      .eq("id", lead.search_config_id)
+      .maybeSingle();
+    const cfgAny = cfg as any;
+    if (cfgAny?.demo_template_id) {
+      if (cfgAny.demo_template_type === "FUNNEL") funnelTemplateId = String(cfgAny.demo_template_id);
+      else templateId = String(cfgAny.demo_template_id);
+    }
+  }
+
   const { wl_domain } = await loadWorkspaceCreds(input.workspaceId);
+
   const businessName = lead.business_name ?? lead.domain ?? "Prospect";
   const tags = buildPersonalizationTags(lead, enrichment);
   const brandColor = brandColorFrom(enrichment);
