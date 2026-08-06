@@ -84,7 +84,24 @@ export async function provisionDemoSite(input: {
   ]);
   if (!lead) throw new Error("Lead not found");
 
+  // Fall back to the template chosen on the audience this lead came from.
+  let templateId = input.templateId ?? null;
+  let funnelTemplateId = input.funnelTemplateId ?? null;
+  if (!templateId && !funnelTemplateId && lead.search_config_id) {
+    const { data: cfg } = await supabaseAdmin
+      .from("search_configs")
+      .select("demo_template_id, demo_template_type")
+      .eq("id", lead.search_config_id)
+      .maybeSingle();
+    const cfgAny = cfg as any;
+    if (cfgAny?.demo_template_id) {
+      if (cfgAny.demo_template_type === "FUNNEL") funnelTemplateId = String(cfgAny.demo_template_id);
+      else templateId = String(cfgAny.demo_template_id);
+    }
+  }
+
   const { wl_domain } = await loadWorkspaceCreds(input.workspaceId);
+
   const businessName = lead.business_name ?? lead.domain ?? "Prospect";
   const tags = buildPersonalizationTags(lead, enrichment);
   const brandColor = brandColorFrom(enrichment);
@@ -98,8 +115,8 @@ export async function provisionDemoSite(input: {
     customerLastName: last,
     websiteName: `${businessName} — demo`,
     customerSubdomain: slugifySubdomain(businessName),
-    templateId: input.templateId ?? null,
-    funnelTemplateId: input.funnelTemplateId ?? null,
+    templateId,
+    funnelTemplateId,
     brandColor,
     personalizationTags: tags,
   });
@@ -114,9 +131,9 @@ export async function provisionDemoSite(input: {
       project_id: result.projectId,
       website_id: result.websiteId,
       subdomain: result.subdomain,
-      template_id: input.templateId ?? null,
-      funnel_template_id: input.funnelTemplateId ?? null,
-      template_type: input.funnelTemplateId ? "FUNNEL" : "WEBSITE",
+      template_id: templateId,
+      funnel_template_id: funnelTemplateId,
+      template_type: funnelTemplateId ? "FUNNEL" : "WEBSITE",
       personalization_tags: tags,
       brand_color: brandColor,
       preview_url: previewUrl,

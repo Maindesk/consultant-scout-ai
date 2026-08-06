@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Trash2, Search, Sparkles, ChevronDown } from "lucide-react";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
+import { TemplatePickerDialog, TemplatePickerButton, type PickedTemplate } from "@/components/TemplatePickerDialog";
+
 
 export const Route = createFileRoute("/_authenticated/targeting")({
   component: Targeting,
@@ -52,6 +54,8 @@ function Targeting() {
   const [discoverLimits, setDiscoverLimits] = useState<Record<string, number>>({});
   const [autoProcess, setAutoProcess] = useState(true);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [template, setTemplate] = useState<PickedTemplate | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
 
   const expandMut = useMutation({
     mutationFn: () => expand({ data: { description } }),
@@ -78,16 +82,22 @@ function Targeting() {
           tech_stack: techStack,
           audience_description: description || undefined,
           search_intents: intents,
+          demo_template_id: template?.id ?? null,
+          demo_template_type: template?.type ?? null,
+          demo_template_name: template?.name ?? null,
+          demo_template_thumb: template?.thumb ?? null,
         },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["search_configs"] });
       setDescription(""); setName(""); setNiches([]); setLocations([]); setKeywords([]); setIntents([]); setTechStack([]);
+      setTemplate(null);
       setShowAdvanced(false);
       toast.success("Audience saved");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
+
 
   const discoverMut = useMutation({
     mutationFn: async ({ id, limit }: { id: string; limit: number }) => {
@@ -252,6 +262,23 @@ function Targeting() {
             </div>
           )}
 
+          <div className="rounded-lg border p-3 space-y-2">
+            <div>
+              <Label className="text-xs">Demo site template</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Used when a demo site is provisioned for leads found with this audience.
+              </p>
+            </div>
+            <TemplatePickerButton selected={template} onOpen={() => setTplOpen(true)} />
+          </div>
+          <TemplatePickerDialog
+            open={tplOpen}
+            onOpenChange={setTplOpen}
+            value={template?.id ?? null}
+            onSelect={setTemplate}
+          />
+
+
           <Button
             onClick={() => createMut.mutate()}
             disabled={!name || niches.length === 0 || createMut.isPending}
@@ -282,6 +309,21 @@ function Targeting() {
                 {(c as any).audience_description && (
                   <p className="text-xs text-muted-foreground mt-1 italic">"{(c as any).audience_description}"</p>
                 )}
+                {(c as any).demo_template_name && (
+                  <div className="mt-2 flex items-center gap-2">
+                    {(c as any).demo_template_thumb && (
+                      <img
+                        src={(c as any).demo_template_thumb}
+                        alt={`${(c as any).demo_template_name} template preview`}
+                        className="w-12 h-9 object-cover object-top rounded border"
+                      />
+                    )}
+                    <span className="text-[11px] text-muted-foreground">
+                      Demo template: {(c as any).demo_template_name}
+                    </span>
+                  </div>
+                )}
+
                 <div className="mt-2 flex flex-wrap gap-1">
                   {c.niches.map((n: string) => <Badge key={n} variant="secondary">{n}</Badge>)}
                   {c.locations.map((n: string) => <Badge key={"l-" + n} variant="outline">{n}</Badge>)}

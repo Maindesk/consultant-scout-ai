@@ -777,6 +777,10 @@ export type Database = {
         Row: {
           audience_description: string | null
           created_at: string
+          demo_template_id: string | null
+          demo_template_name: string | null
+          demo_template_thumb: string | null
+          demo_template_type: string | null
           id: string
           is_default: boolean
           keywords: string[]
@@ -790,6 +794,10 @@ export type Database = {
         Insert: {
           audience_description?: string | null
           created_at?: string
+          demo_template_id?: string | null
+          demo_template_name?: string | null
+          demo_template_thumb?: string | null
+          demo_template_type?: string | null
           id?: string
           is_default?: boolean
           keywords?: string[]
@@ -803,6 +811,10 @@ export type Database = {
         Update: {
           audience_description?: string | null
           created_at?: string
+          demo_template_id?: string | null
+          demo_template_name?: string | null
+          demo_template_thumb?: string | null
+          demo_template_type?: string | null
           id?: string
           is_default?: boolean
           keywords?: string[]

@@ -7,16 +7,17 @@ import {
   provisionDemoSiteForLead,
   getFreshEditLink,
   getDemoSiteForLead,
-  listAvailableTemplates,
   setDemoSiteApproval,
 } from "@/lib/platform.functions";
+import { TemplatePickerDialog, TemplatePickerButton, type PickedTemplate } from "@/components/TemplatePickerDialog";
+
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+
 import { Input } from "@/components/ui/input";
 import { Loader2, Sparkles, Mail, ExternalLink, Globe, KeyRound, Tag, Plus, Linkedin, Instagram, Facebook, Twitter } from "lucide-react";
 import { toast } from "sonner";
@@ -276,24 +277,19 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
 function DemoSitePanel({ leadId }: { leadId: string }) {
   const qc = useQueryClient();
   const getSite = useServerFn(getDemoSiteForLead);
-  const listTpls = useServerFn(listAvailableTemplates);
   const provision = useServerFn(provisionDemoSiteForLead);
   const editLink = useServerFn(getFreshEditLink);
   const approve = useServerFn(setDemoSiteApproval);
-  const [tpl, setTpl] = useState<string | undefined>(undefined);
+  const [selected, setSelected] = useState<PickedTemplate | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
 
   const { data: site } = useQuery({
     queryKey: ["demo-site", leadId],
     queryFn: () => getSite({ data: { lead_id: leadId } }),
   });
-  const { data: tplRes } = useQuery({
-    queryKey: ["demo-templates"],
-    queryFn: () => listTpls(),
-    staleTime: 5 * 60 * 1000,
-  });
-  const templates = tplRes?.templates ?? [];
-  const selected = templates.find((t) => t.id === tpl);
+  const tpl = selected?.id;
+
 
   const provMut = useMutation({
     mutationFn: () =>
@@ -418,42 +414,13 @@ function DemoSitePanel({ leadId }: { leadId: string }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {templates.length > 0 ? (
-            <>
-              <Select value={tpl} onValueChange={setTpl}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Choose a template (optional)" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {templates.map((t) => (
-                    <SelectItem key={`${t.type}-${t.id}`} value={t.id}>
-                      {t.name}
-                      {t.primaryCategories ? ` · ${t.primaryCategories}` : ""}
-                      {t.type === "FUNNEL" ? " (funnel)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selected && (selected.thumb || selected.previewUrl) && (
-                <div className="flex items-center gap-2 rounded-md border p-2">
-                  {selected.thumb && (
-                    <img src={selected.thumb} alt={`${selected.name} template thumbnail`} className="w-20 h-14 object-cover rounded" />
-                  )}
-                  {selected.previewUrl && (
-                    <a href={selected.previewUrl} target="_blank" rel="noreferrer" className="text-[11px] underline text-muted-foreground">
-                      Preview this template
-                    </a>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-[11px] text-amber-600">
-              {tplRes?.error
-                ? `Couldn't load templates: ${tplRes.error}`
-                : "No templates available — the prospect will pick one on first login."}
-            </p>
-          )}
+          <TemplatePickerButton selected={selected} onOpen={() => setTplOpen(true)} label="Choose a template" />
+          <TemplatePickerDialog
+            open={tplOpen}
+            onOpenChange={setTplOpen}
+            value={selected?.id ?? null}
+            onSelect={setSelected}
+          />
           <Button size="sm" onClick={() => provMut.mutate()} disabled={provMut.isPending}>
             {provMut.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
             Provision demo site
@@ -464,6 +431,7 @@ function DemoSitePanel({ leadId }: { leadId: string }) {
   );
 
 }
+
 
 function MainSiteTagPanel({
   leadId,
