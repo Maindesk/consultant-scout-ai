@@ -35,6 +35,8 @@ function Targeting() {
   const create = useServerFn(createSearchConfig);
   const del = useServerFn(deleteSearchConfig);
   const discover = useServerFn(discoverLeads);
+  const enrich = useServerFn(enrichLead);
+  const draft = useServerFn(draftEmailsForLead);
   const expand = useServerFn(expandAudience);
 
   const { data: configs = [] } = useQuery({ queryKey: ["search_configs"], queryFn: () => list() });
