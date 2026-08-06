@@ -132,12 +132,115 @@ export interface WebsiteSignals {
     https: boolean;
   } | null;
   gaps: string[]; // human-readable observations useful for cold emails
+  /** Per-feature verdict with evidence. Only `absent` entries are real gaps. */
+  capabilities: Record<CapabilityKey, Capability>;
+  /** False when the scrape returned too little markup to judge anything. */
+  html_usable: boolean;
 }
+
+export type CapabilityKey =
+  | "booking"
+  | "email_capture"
+  | "forms"
+  | "popup"
+  | "chat"
+  | "payments"
+  | "membership"
+  | "reviews"
+  | "crm"
+  | "analytics"
+  | "ads_pixel"
+  | "responsive"
+  | "seo";
+
+export interface Capability {
+  state: "present" | "absent" | "unknown";
+  /** Third-party product providing it (i.e. a consolidation opportunity). */
+  via: string | null;
+  /** Why we decided that — shown in the UI and fed to the AI. */
+  evidence: string | null;
+}
+
+const CAPABILITY_LABEL: Record<CapabilityKey, string> = {
+  booking: "booking/appointments",
+  email_capture: "email capture / newsletter",
+  forms: "contact forms / lead intake",
+  popup: "popups & exit-intent",
+  chat: "live chat",
+  payments: "payments & checkout",
+  membership: "memberships & courses",
+  reviews: "testimonials & reviews",
+  crm: "CRM & pipeline",
+  analytics: "analytics",
+  ads_pixel: "retargeting pixel",
+  responsive: "mobile-responsive layout",
+  seo: "SEO basics (H1 + OG image)",
+};
+
+/**
+ * Native (platform built-in) evidence — a site can absolutely have booking or
+ * a newsletter without any third-party script, so tool detection alone
+ * produces false "Missing" verdicts. These patterns look for the feature
+ * itself in the markup.
+ */
+const NATIVE_EVIDENCE: Partial<Record<CapabilityKey, Array<{ re: RegExp; note: string }>>> = {
+  booking: [
+    { re: /href=["'][^"']*\/(book|booking|bookings|appointments?|schedule|reserve)\b/i, note: "booking page link" },
+    { re: /\b(book (?:a|your) (?:call|appointment|session|table)|schedule (?:a|your) (?:call|appointment|consultation)|request an appointment)\b/i, note: "booking CTA copy" },
+    { re: /(setmore|simplybook|square\.site\/book|opentable|resy|mindbody|vagaro|booksy|fresha|schedulicity|appointlet|youcanbook\.me|10to8)/i, note: "booking provider" },
+  ],
+  email_capture: [
+    { re: /<input[^>]+type=["']email["']/i, note: "email input field" },
+    { re: /(mc4wp|sqs-block-newsletter|newsletter-form|klaviyo-form|kl_?newsletter|omnisend|form[^>]*newsletter)/i, note: "newsletter form block" },
+    { re: /\b(subscribe to (?:our|the) (?:newsletter|list)|join (?:our|the) (?:newsletter|mailing list)|get (?:the )?free (?:guide|checklist|ebook))\b/i, note: "newsletter/lead-magnet copy" },
+  ],
+  forms: [
+    { re: /<form[\s>][\s\S]{0,4000}?<textarea/i, note: "form with message field" },
+    { re: /<form[\s>][\s\S]{0,2000}?<input[^>]+(name|id)=["'][^"']*(name|phone|message|subject)/i, note: "contact form fields" },
+    { re: /(wpcf7|gravity_?form|wpforms|ninja_?forms|sqs-block-form|w-form|hs-form)/i, note: "form plugin markup" },
+  ],
+  payments: [
+    { re: /(\/cart\/add|add-to-cart|data-product-id|woocommerce|snipcart|shopify-payment-button|\/checkout\b)/i, note: "cart / checkout markup" },
+    { re: /(sqs-money|product-price|itemprop=["']price["']|"priceCurrency")/i, note: "priced product markup" },
+  ],
+  membership: [
+    { re: /href=["'][^"']*\/(members?|member-area|my-account|account\/login|portal|student|courses?\/login)\b/i, note: "member/login area link" },
+    { re: /(memberpress|learndash|lifterlms|tutor-lms|wp-login\.php|thinkific|teachable|kajabi)/i, note: "membership platform markup" },
+  ],
+  reviews: [
+    { re: /("@type"\s*:\s*"(Review|AggregateRating)"|itemprop=["']aggregateRating["'])/i, note: "review schema markup" },
+    { re: /(testimonial|what (?:our )?clients say|success stories|5-star|five star)/i, note: "testimonial section copy" },
+  ],
+  popup: [
+    { re: /(exit-intent|data-popup|class=["'][^"']*\b(popup|modal-newsletter|lightbox-newsletter)\b)/i, note: "popup markup" },
+  ],
+  chat: [
+    { re: /(href=["']https:\/\/(wa\.me|api\.whatsapp\.com)|class=["'][^"']*live-?chat)/i, note: "chat/WhatsApp widget" },
+  ],
+};
+
+/** Categories only ever detectable through scripts in <head>/<body>. */
+const SCRIPT_ONLY: CapabilityKey[] = ["analytics", "ads_pixel", "crm"];
+
+const CAP_TOOL_CATEGORIES: Partial<Record<CapabilityKey, SignalCategory[]>> = {
+  booking: ["scheduling"],
+  email_capture: ["email_capture"],
+  forms: ["forms"],
+  popup: ["popup"],
+  chat: ["chat"],
+  payments: ["payments", "ecommerce"],
+  membership: ["membership"],
+  reviews: ["reviews"],
+  crm: ["crm"],
+  analytics: ["analytics"],
+  ads_pixel: ["ads_pixel"],
+};
 
 function extractMeta(html: string, name: string): string | null {
   const re = new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]+content=["']([^"']+)["']`, "i");
   return html.match(re)?.[1] ?? null;
 }
+
 
 export function detectSignals(html?: string | null): Omit<WebsiteSignals, "performance"> {
   const src = html ?? "";
