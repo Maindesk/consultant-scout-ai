@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Trash2, Search, Sparkles, ChevronDown } from "lucide-react";
 import { KNOWN_PLATFORMS } from "@/lib/platforms";
+import { TemplatePickerDialog, TemplatePickerButton, type PickedTemplate } from "@/components/TemplatePickerDialog";
+
 
 export const Route = createFileRoute("/_authenticated/targeting")({
   component: Targeting,
