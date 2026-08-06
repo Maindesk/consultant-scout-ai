@@ -184,8 +184,13 @@ const EnrichmentSchema = z.object({
   pricing_signals: z.string(),
   funnel_presence: z.string(),
   contact_email: z.string().nullable(),
+  /** The person behind the business (owner/founder/main contact), if named. */
+  contact_name: z.string().nullable(),
+  /** Clean brand/company name (not the page title). */
+  company_name: z.string().nullable(),
   pain_points: z.array(z.object({ title: z.string(), description: z.string() })),
 });
+
 
 export const enrichLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
