@@ -52,6 +52,8 @@ function Targeting() {
   const [discoverLimits, setDiscoverLimits] = useState<Record<string, number>>({});
   const [autoProcess, setAutoProcess] = useState(true);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [template, setTemplate] = useState<PickedTemplate | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
 
   const expandMut = useMutation({
     mutationFn: () => expand({ data: { description } }),
@@ -78,16 +80,22 @@ function Targeting() {
           tech_stack: techStack,
           audience_description: description || undefined,
           search_intents: intents,
+          demo_template_id: template?.id ?? null,
+          demo_template_type: template?.type ?? null,
+          demo_template_name: template?.name ?? null,
+          demo_template_thumb: template?.thumb ?? null,
         },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["search_configs"] });
       setDescription(""); setName(""); setNiches([]); setLocations([]); setKeywords([]); setIntents([]); setTechStack([]);
+      setTemplate(null);
       setShowAdvanced(false);
       toast.success("Audience saved");
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
+
 
   const discoverMut = useMutation({
     mutationFn: async ({ id, limit }: { id: string; limit: number }) => {
