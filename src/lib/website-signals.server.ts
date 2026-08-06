@@ -84,6 +84,11 @@ const TOOL_PATTERNS: Array<{ name: string; category: SignalCategory; patterns: R
   { name: "Jotform", category: "forms", patterns: [/jotform\.com/i] },
   { name: "Google Forms", category: "forms", patterns: [/docs\.google\.com\/forms/i] },
   { name: "Tally", category: "forms", patterns: [/tally\.so/i] },
+  { name: "Formspree", category: "forms", patterns: [/formspree\.io/i] },
+  { name: "Basin", category: "forms", patterns: [/usebasin\.com/i] },
+  { name: "Wufoo", category: "forms", patterns: [/wufoo\.com/i] },
+  { name: "Paperform", category: "forms", patterns: [/paperform\.co/i] },
+  { name: "Netlify Forms", category: "forms", patterns: [/data-netlify(?:=|-)/i] },
 
   // Membership / community
   { name: "MemberSpace", category: "membership", patterns: [/memberspace\.com/i] },
@@ -245,6 +250,17 @@ function visibleMarkup(src: string): string {
     .replace(/<template[\s\S]*?<\/template>/gi, " ");
 }
 
+/** Proves a native form by its controls, independent of builder-specific CSS. */
+function hasStructuredLeadForm(src: string): boolean {
+  const forms = src.match(/<form[\s>][\s\S]*?<\/form>/gi) ?? [];
+  return forms.some((form) => {
+    const controls = form.match(/<(?:input|select|textarea)\b/gi)?.length ?? 0;
+    const hasIdentityField = /<(?:input|select|textarea)[^>]+(?:type|name|id|aria-label|placeholder)=["'][^"']*(?:email|name|phone|company|message|inquiry|enquiry)/i.test(form);
+    const hasSubmit = /<(?:button|input)[^>]+type=["']submit["']/i.test(form) || /<button\b[^>]*>[\s\S]{0,100}\b(?:send|submit|apply|contact|request|continue)\b/i.test(form);
+    return controls >= 2 && hasIdentityField && hasSubmit;
+  });
+}
+
 /** Categories only ever detectable through scripts in <head>/<body>. */
 const SCRIPT_ONLY: CapabilityKey[] = ["analytics", "ads_pixel", "crm"];
 
@@ -338,6 +354,10 @@ export function detectSignals(html?: string | null, renderedText?: string | null
     const strong = rules.find((r) => r.strength === "strong" && match(r));
     if (strong) {
       setCap(key, { state: "present", via: null, evidence: `built into their site — ${strong.note}` });
+      continue;
+    }
+    if (key === "forms" && hasStructuredLeadForm(visible)) {
+      setCap(key, { state: "present", via: null, evidence: "built into their site — structured lead form with contact fields and submit action" });
       continue;
     }
     if (key === "forms" && semanticFormEvidence) {
