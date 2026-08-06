@@ -26,6 +26,10 @@ export const createSearchConfig = createServerFn({ method: "POST" })
     tech_stack?: string[];
     audience_description?: string;
     search_intents?: string[];
+    demo_template_id?: string | null;
+    demo_template_type?: string | null;
+    demo_template_name?: string | null;
+    demo_template_thumb?: string | null;
   }) => d)
   .handler(async ({ context, data }) => {
     const { data: row, error } = await context.supabase
@@ -38,13 +42,18 @@ export const createSearchConfig = createServerFn({ method: "POST" })
         tech_stack: data.tech_stack ?? [],
         audience_description: data.audience_description ?? null,
         search_intents: data.search_intents ?? [],
+        demo_template_id: data.demo_template_id ?? null,
+        demo_template_type: data.demo_template_type ?? null,
+        demo_template_name: data.demo_template_name ?? null,
+        demo_template_thumb: data.demo_template_thumb ?? null,
         user_id: context.userId,
-      })
+      } as never)
       .select()
       .single();
     if (error) throw error;
     return row;
   });
+
 
 export const deleteSearchConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
