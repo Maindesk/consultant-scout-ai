@@ -268,8 +268,9 @@ function extractMeta(html: string, name: string): string | null {
 }
 
 
-export function detectSignals(html?: string | null): Omit<WebsiteSignals, "performance"> {
+export function detectSignals(html?: string | null, renderedText?: string | null): Omit<WebsiteSignals, "performance"> {
   const src = html ?? "";
+  const semantic = renderedText ?? "";
   const tools: DetectedTool[] = [];
   const seen = new Set<string>();
   for (const t of TOOL_PATTERNS) {
@@ -306,6 +307,18 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
 
   const visible = visibleMarkup(src);
 
+  // Firecrawl's rendered markdown contains browser-visible form controls even
+  // when a site builder serializes those controls inside hydration JSON. Treat
+  // only high-specificity combinations as proof, never a lone word like “form”.
+  const semanticFormEvidence =
+    /\b(?:fill out|complete|submit) (?:the |this |our )?form\b/i.test(semantic) ||
+    (/\b(?:first name|full name|your name)\b/i.test(semantic) &&
+      /\bemail(?: address)?\b/i.test(semantic) &&
+      /\b(?:send message|submit|apply now|request (?:a )?(?:quote|consultation))\b/i.test(semantic));
+  const semanticEmailCaptureEvidence =
+    /\b(?:subscribe|sign up|join)\b.{0,80}\b(?:newsletter|mailing list|email list|updates)\b/i.test(semantic) &&
+    /\bemail(?: address)?\b/i.test(semantic);
+
   const capabilities = {} as Record<CapabilityKey, Capability>;
   const setCap = (k: CapabilityKey, c: Capability) => (capabilities[k] = c);
 
@@ -327,6 +340,14 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
       setCap(key, { state: "present", via: null, evidence: `built into their site — ${strong.note}` });
       continue;
     }
+    if (key === "forms" && semanticFormEvidence) {
+      setCap(key, { state: "present", via: null, evidence: "rendered page contains a complete lead/contact form" });
+      continue;
+    }
+    if (key === "email_capture" && semanticEmailCaptureEvidence) {
+      setCap(key, { state: "present", via: null, evidence: "rendered page contains an email signup form" });
+      continue;
+    }
     const weak = rules.find((r) => r.strength === "weak" && match(r));
     if (weak) {
       setCap(key, { state: "unknown", via: null, evidence: `unconfirmed — ${weak.note}` });
@@ -334,6 +355,8 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
     }
     if (SCRIPT_ONLY.includes(key)) {
       setCap(key, { state: "absent", via: null, evidence: "no tracking/CRM script in page source" });
+    } else if (key === "forms" && !/===\s+https?:\/\/[^\s]*(?:contact|apply|intake|quote|consult)/i.test(semantic)) {
+      setCap(key, { state: "unknown", via: null, evidence: "no contact or intake page was scanned" });
     } else if (rules.length) {
       setCap(key, { state: "absent", via: null, evidence: "no widget, link or markup for it on the pages we scanned" });
     } else {
@@ -395,8 +418,8 @@ export async function measurePerformance(url: string): Promise<WebsiteSignals["p
   }
 }
 
-export async function analyzeWebsite(url: string, html?: string | null): Promise<WebsiteSignals> {
-  const base = detectSignals(html);
+export async function analyzeWebsite(url: string, html?: string | null, renderedText?: string | null): Promise<WebsiteSignals> {
+  const base = detectSignals(html, renderedText);
   const performance = await measurePerformance(url);
   return { ...base, performance };
 }

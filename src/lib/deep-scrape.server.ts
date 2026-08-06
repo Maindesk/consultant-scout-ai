@@ -58,6 +58,12 @@ export async function deepScrapeSite(website: string): Promise<DeepScrapeResult>
   const domain = extractDomain(base);
   const pages: DeepScrapeResult["pages"] = [];
 
+  // Discovery must happen from the domain root as well as the supplied lead
+  // URL. Search results often point at a service/profile sub-page whose local
+  // navigation does not expose the site's contact or intake pages.
+  let origin = base;
+  try { origin = new URL(base).origin; } catch {}
+
   // 1) Homepage
   let homeHtml = "";
   let homeMd = "";
@@ -72,19 +78,34 @@ export async function deepScrapeSite(website: string): Promise<DeepScrapeResult>
     console.error("deepScrape homepage failed", e);
   }
 
+  let originHtml = homeHtml;
+  if (origin.replace(/\/$/, "") !== base.replace(/\/$/, "")) {
+    try {
+      const res: any = await fc.scrape(origin, { formats: ["markdown", "rawHtml", "html"], onlyMainContent: false });
+      originHtml = res?.rawHtml ?? res?.html ?? "";
+      pages.push({ url: origin, markdown: res?.markdown ?? "", html: originHtml });
+    } catch (e) {
+      console.warn("deepScrape domain root failed", origin, (e as Error)?.message);
+    }
+  }
+
   // 2) Discover candidate URLs: try firecrawl map first, fall back to links in HTML
   let candidates: string[] = [];
   try {
-    const map: any = await (fc as any).map(base, { limit: 200, includeSubdomains: false });
+    const map: any = await (fc as any).map(origin, { limit: 200, includeSubdomains: false });
     const links: string[] = map?.links ?? map?.data?.links ?? [];
     candidates = links;
   } catch {}
-  if (candidates.length === 0 && homeHtml) {
-    candidates = extractLinks(homeHtml, base);
-  }
+  // Always merge navigable links. A map response containing only the supplied
+  // path used to suppress this fallback and caused contact forms to be missed.
+  candidates = Array.from(new Set([
+    ...candidates,
+    ...extractLinks(homeHtml, base),
+    ...extractLinks(originHtml, origin),
+  ]));
 
   // 3) Filter same-domain, dedupe, drop homepage, rank
-  const seen = new Set<string>([base.replace(/\/$/, "")]);
+  const seen = new Set<string>(pages.map((p) => p.url.replace(/\/$/, "")));
   const ranked = candidates
     .filter((u) => {
       try {
@@ -99,7 +120,7 @@ export async function deepScrapeSite(website: string): Promise<DeepScrapeResult>
     .map((u) => ({ u, score: scoreUrl(u) }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, MAX_PAGES - 1)
+    .slice(0, Math.max(0, MAX_PAGES - pages.length))
     .map((x) => x.u);
 
   // 4) Scrape extras in parallel
