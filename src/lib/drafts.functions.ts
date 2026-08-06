@@ -107,7 +107,7 @@ Prospect:
 - VERIFIED gaps (evidence-checked, safe to reference): ${JSON.stringify(gaps)}
 - Feature verdicts (present = they already have it, absent = verified gap, unknown = NEVER claim it is missing): ${JSON.stringify((enrichment as any)?.website_signals?.capabilities ?? {})}
 - Page perf: ${JSON.stringify((enrichment as any)?.website_signals?.performance ?? {})}
-- NEVER state or imply a feature is missing unless its verdict is "absent". If a verdict is "unknown" or the markup was unreadable, stay away from that claim entirely.
+- NEVER state or imply a feature is missing unless its verdict is "absent". If a verdict is "unknown", stay away from that claim entirely.${(enrichment as any)?.website_signals?.html_usable === false ? "\n- WARNING: their page markup could not be read, so treat EVERY feature as unknown and make NO claims about what their site lacks." : ""}
 
 Campaign goal: ${EMAIL_GOAL_LABELS[goal as keyof typeof EMAIL_GOAL_LABELS] ?? goal}
 ${goalFraming(goal)}
