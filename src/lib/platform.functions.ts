@@ -13,15 +13,15 @@ export const provisionDemoSiteForLead = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { data: lead } = await context.supabase
       .from("leads")
-      .select("id, workspace_id")
+      .select("id")
       .eq("id", data.lead_id)
       .maybeSingle();
     if (!lead) throw new Error("Lead not found");
 
     const { getActiveWorkspaceIdForUser } = await import("./quota.server");
-    const workspaceId =
-      ((lead as any).workspace_id as string | null) ?? (await getActiveWorkspaceIdForUser(context.userId));
+    const workspaceId = await getActiveWorkspaceIdForUser(context.userId);
     if (!workspaceId) throw new Error("No active workspace");
+
 
     const { provisionDemoSite } = await import("./demo-site.server");
     const { site, created } = await provisionDemoSite({
