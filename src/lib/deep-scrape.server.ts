@@ -106,11 +106,13 @@ export async function deepScrapeSite(website: string): Promise<DeepScrapeResult>
   const extras = await Promise.all(
     ranked.map(async (u) => {
       try {
-        const res: any = await fc.scrape(u, { formats: ["markdown", "html"], onlyMainContent: true });
+        // onlyMainContent:false + rawHtml so footers, forms, mailto links and
+        // embedded widgets on contact/pricing pages are visible to detectors.
+        const res: any = await fc.scrape(u, { formats: ["markdown", "rawHtml", "html"], onlyMainContent: false });
         return {
           url: u,
           markdown: (res?.markdown ?? "") as string,
-          html: (res?.html ?? res?.rawHtml ?? "") as string,
+          html: (res?.rawHtml ?? res?.html ?? "") as string,
         };
       } catch (e) {
         console.warn("deepScrape extra failed", u, (e as Error)?.message);
