@@ -8,7 +8,9 @@ import {
   getFreshEditLink,
   getDemoSiteForLead,
   listAvailableTemplates,
+  setDemoSiteApproval,
 } from "@/lib/platform.functions";
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
