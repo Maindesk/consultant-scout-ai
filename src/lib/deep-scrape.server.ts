@@ -62,9 +62,11 @@ export async function deepScrapeSite(website: string): Promise<DeepScrapeResult>
   let homeHtml = "";
   let homeMd = "";
   try {
-    const res: any = await fc.scrape(base, { formats: ["markdown", "html"], onlyMainContent: false });
+    // rawHtml keeps <head>, scripts and third-party embeds — the cleaned `html`
+    // format strips exactly the markup our tool/SEO detectors rely on.
+    const res: any = await fc.scrape(base, { formats: ["markdown", "rawHtml", "html"], onlyMainContent: false });
     homeMd = res?.markdown ?? "";
-    homeHtml = res?.html ?? res?.rawHtml ?? "";
+    homeHtml = res?.rawHtml ?? res?.html ?? "";
     pages.push({ url: base, markdown: homeMd, html: homeHtml });
   } catch (e) {
     console.error("deepScrape homepage failed", e);
