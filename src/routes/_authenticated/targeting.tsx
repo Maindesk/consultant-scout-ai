@@ -300,7 +300,11 @@ function Targeting() {
                   disabled={discoverMut.isPending}
                 >
                   {discoverMut.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
-                  Discover
+                  {discoverMut.isPending && progress
+                    ? `Processing ${progress.done}/${progress.total}`
+                    : autoProcess
+                      ? "Find + enrich + draft"
+                      : "Discover"}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => delMut.mutate(c.id)}>
                   <Trash2 className="w-4 h-4" />
