@@ -23,8 +23,11 @@ const EnrichmentSchema = z.object({
   pricing_signals: z.string(),
   funnel_presence: z.string(),
   contact_email: z.string().nullable(),
+  contact_name: z.string().nullable(),
+  company_name: z.string().nullable(),
   pain_points: z.array(z.object({ title: z.string(), description: z.string() })),
 });
+
 
 const SequenceSchema = z.object({
   emails: z.array(
