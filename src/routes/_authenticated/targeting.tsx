@@ -262,6 +262,23 @@ function Targeting() {
             </div>
           )}
 
+          <div className="rounded-lg border p-3 space-y-2">
+            <div>
+              <Label className="text-xs">Demo site template</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Used when a demo site is provisioned for leads found with this audience.
+              </p>
+            </div>
+            <TemplatePickerButton selected={template} onOpen={() => setTplOpen(true)} />
+          </div>
+          <TemplatePickerDialog
+            open={tplOpen}
+            onOpenChange={setTplOpen}
+            value={template?.id ?? null}
+            onSelect={setTemplate}
+          />
+
+
           <Button
             onClick={() => createMut.mutate()}
             disabled={!name || niches.length === 0 || createMut.isPending}
