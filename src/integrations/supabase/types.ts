@@ -408,11 +408,17 @@ export type Database = {
       }
       lead_platform_sites: {
         Row: {
+          approved: boolean
+          approved_at: string | null
+          approved_by: string | null
+          brand_color: string | null
           created_at: string
           edit_sso_url: string | null
+          funnel_template_id: string | null
           id: string
           lead_id: string
           personalization_tags: Json
+          preview_url: string | null
           project_id: string
           sso_expires_at: string | null
           subdomain: string | null
@@ -423,11 +429,17 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_color?: string | null
           created_at?: string
           edit_sso_url?: string | null
+          funnel_template_id?: string | null
           id?: string
           lead_id: string
           personalization_tags?: Json
+          preview_url?: string | null
           project_id: string
           sso_expires_at?: string | null
           subdomain?: string | null
@@ -438,11 +450,17 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          approved?: boolean
+          approved_at?: string | null
+          approved_by?: string | null
+          brand_color?: string | null
           created_at?: string
           edit_sso_url?: string | null
+          funnel_template_id?: string | null
           id?: string
           lead_id?: string
           personalization_tags?: Json
+          preview_url?: string | null
           project_id?: string
           sso_expires_at?: string | null
           subdomain?: string | null

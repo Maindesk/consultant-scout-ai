@@ -171,12 +171,24 @@ export const updateWorkspaceSettings = createServerFn({ method: "POST" })
         : null;
     }
 
-    const { error } = await context.supabase
+    const { data: updated, error } = await context.supabase
       .from("workspaces")
       .update(patch as never)
-      .eq("id", data.workspace_id);
+      .eq("id", data.workspace_id)
+      .select("id, name, platform_wl_domain, main_site_domain, platform_client_key_ciphertext, main_site_api_key_ciphertext, webhook_secret_ciphertext")
+      .maybeSingle();
     if (error) throw error;
-    return { ok: true };
+    if (!updated) throw new Error("Nothing was saved — you may not have permission on this workspace.");
+    return {
+      ok: true,
+      workspace_id: updated.id,
+      name: updated.name,
+      platform_wl_domain: updated.platform_wl_domain,
+      main_site_domain: updated.main_site_domain,
+      has_platform_key: !!updated.platform_client_key_ciphertext,
+      has_main_site_key: !!updated.main_site_api_key_ciphertext,
+      has_webhook_secret: !!updated.webhook_secret_ciphertext,
+    };
   });
 
 /**
