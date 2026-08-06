@@ -375,7 +375,7 @@ export function detectSignals(html?: string | null, renderedText?: string | null
     }
     if (SCRIPT_ONLY.includes(key)) {
       setCap(key, { state: "absent", via: null, evidence: "no tracking/CRM script in page source" });
-    } else if (key === "forms" && !/===\s+https?:\/\/[^\s]*(?:contact|apply|intake|quote|consult)/i.test(semantic)) {
+    } else if (key === "forms" && !/===\s+https?:\/\/[^\s]*(?:contact|apply|intake|quote|consult|get-in-touch|reach-(?:us|out)|lets-talk|connect)/i.test(semantic)) {
       setCap(key, { state: "unknown", via: null, evidence: "no contact or intake page was scanned" });
     } else if (rules.length) {
       setCap(key, { state: "absent", via: null, evidence: "no widget, link or markup for it on the pages we scanned" });
