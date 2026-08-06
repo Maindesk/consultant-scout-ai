@@ -371,10 +371,20 @@ export function summarizeSignalsForPrompt(s?: WebsiteSignals | null): string {
   const perf = s.performance
     ? `HTTP ${s.performance.status ?? "n/a"}, TTFB ${s.performance.ttfb_ms ?? "?"}ms, total ${s.performance.total_ms ?? "?"}ms, ${s.performance.bytes ? Math.round(s.performance.bytes / 1024) + "KB" : "size unknown"}`
     : "n/a";
+  const caps = s.capabilities
+    ? (Object.keys(s.capabilities) as CapabilityKey[])
+        .map((k) => `${CAPABILITY_LABEL[k]}: ${s.capabilities[k].state}${s.capabilities[k].via ? ` (via ${s.capabilities[k].via})` : ""} — ${s.capabilities[k].evidence ?? ""}`)
+        .join("\n")
+    : "(not computed)";
   return [
     `Tools detected: ${toolLine}`,
     `Page: title="${s.page.title ?? ""}", ${s.page.word_count} words, H1=${s.page.has_h1}, OG image=${s.page.has_og_image}`,
     `Performance: ${perf}`,
-    `Gaps: ${s.gaps.join("; ") || "none"}`,
-  ].join("\n");
+    `Feature verdicts (present = they already have it, absent = verified gap, unknown = DO NOT mention):\n${caps}`,
+    `Confirmed gaps: ${s.gaps.join("; ") || "none"}`,
+    s.html_usable === false
+      ? "WARNING: page markup was unreadable — do not claim anything is missing on their site."
+      : "",
+  ].filter(Boolean).join("\n");
 }
+
