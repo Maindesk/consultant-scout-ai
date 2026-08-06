@@ -541,6 +541,29 @@ function MainSiteTagPanel({
 
 
 
+function socialNetwork(url: string): string {
+  let host = url;
+  try { host = new URL(url).hostname.replace(/^www\./, "").toLowerCase(); } catch { /* keep raw */ }
+  if (host.includes("linkedin")) return "linkedin";
+  if (host.includes("instagram")) return "instagram";
+  if (host.includes("facebook") || host.includes("fb.com")) return "facebook";
+  if (host.includes("twitter") || host === "x.com" || host.endsWith(".x.com")) return "twitter";
+  return host;
+}
+
+function dedupeSocials(urls: string[]): string[] {
+  const byNetwork = new Map<string, string>();
+  for (const raw of urls) {
+    const url = raw?.trim();
+    if (!url) continue;
+    const key = socialNetwork(url);
+    const existing = byNetwork.get(key);
+    // prefer the shortest (usually the canonical profile URL, not a share/deep link)
+    if (!existing || url.length < existing.length) byNetwork.set(key, url);
+  }
+  return Array.from(byNetwork.values());
+}
+
 function ContactPanel({
   name,
   email,
@@ -578,7 +601,7 @@ function ContactPanel({
       )}
       {contacts?.socials && contacts.socials.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          {contacts.socials.map((s) => {
+          {dedupeSocials(contacts.socials).map((s) => {
             const host = (() => {
               try { return new URL(s).hostname.replace(/^www\./, ""); } catch { return s; }
             })();
