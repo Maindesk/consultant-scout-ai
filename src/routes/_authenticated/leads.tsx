@@ -578,7 +578,7 @@ function ContactPanel({
       )}
       {contacts?.socials && contacts.socials.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          {contacts.socials.map((s) => {
+          {dedupeSocials(contacts.socials).map((s) => {
             const host = (() => {
               try { return new URL(s).hostname.replace(/^www\./, ""); } catch { return s; }
             })();
