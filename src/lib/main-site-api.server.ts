@@ -89,18 +89,24 @@ export async function upsertMainSiteContact(input: UpsertContactInput): Promise<
   const { firstName, lastName } = splitName(input.fullName);
   const tags = Array.from(new Set((input.tags ?? []).map((t) => t.trim()).filter(Boolean)));
 
+  // The Website API ContactDetails DTO only accepts these fields — sending
+  // unknown ones (firstName/lastName/website/source) returns a 400.
+  const fullName = [firstName, lastName].filter(Boolean).join(" ");
   const payload: Record<string, unknown> = {
     email: input.email,
-    firstName,
-    lastName,
-    phone: input.phone ?? "",
-    company: input.company ?? "",
-    website: input.website ?? "",
-    source: input.source ?? "PixelOutreach",
     tags,
   };
+  if (fullName) payload.name = fullName;
+  if (input.phone) payload.phone = input.phone;
+  if (input.company) payload.companyName = input.company;
+
+  const noteParts: string[] = [];
+  if (input.website) noteParts.push(`Website: ${input.website}`);
+  noteParts.push(`Source: ${input.source ?? "PixelOutreach"}`);
+  payload.note = noteParts.join(" | ");
 
   const res = await mainSiteFetch(input.workspaceId, "POST", "/api/site/contacts", payload);
+
   if (!res.ok) {
     return { ok: false, error: `${res.status} ${res.text.slice(0, 300)}` };
   }
