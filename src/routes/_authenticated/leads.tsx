@@ -154,7 +154,13 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
               </a>
             </SheetHeader>
             <div className="mt-4 space-y-4 text-sm">
-              {data.lead.email && <div><span className="text-muted-foreground">Email:</span> {data.lead.email}</div>}
+              <ContactPanel
+                name={(data.lead as any).name}
+                email={data.lead.email}
+                contacts={(data.enrichment as any)?.website_signals?.contacts}
+                enriched={!!data.enrichment}
+              />
+
               {data.lead.platform && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1">Detected platform</div>
