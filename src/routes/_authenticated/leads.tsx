@@ -27,19 +27,35 @@ export const Route = createFileRoute("/_authenticated/leads")({
   component: LeadsPage,
 });
 
-const STATUS_COLORS: Record<string, string> = {
-  new: "bg-blue-500/10 text-blue-600",
-  enriched: "bg-purple-500/10 text-purple-600",
-  drafted: "bg-amber-500/10 text-amber-600",
-  contacted: "bg-cyan-500/10 text-cyan-600",
-  approved: "bg-green-500/10 text-green-600",
-  sent: "bg-emerald-500/10 text-emerald-600",
-  replied: "bg-pink-500/10 text-pink-600",
-  in_progress: "bg-indigo-500/10 text-indigo-600",
-  won: "bg-green-500/10 text-green-700",
-  lost: "bg-gray-500/10 text-gray-600",
-  rejected: "bg-gray-500/10 text-gray-600",
+const STATUS_STYLES: Record<string, { label: string; className: string; dot: string }> = {
+  new:         { label: "New",         className: "border-border bg-muted/60 text-muted-foreground", dot: "bg-muted-foreground/50" },
+  enriched:    { label: "Enriched",    className: "border-border bg-background text-foreground", dot: "bg-foreground/40" },
+  drafted:     { label: "Drafted",     className: "border-primary/25 bg-primary/10 text-primary", dot: "bg-primary" },
+  contacted:   { label: "Contacted",   className: "border-primary/25 bg-primary/10 text-primary", dot: "bg-primary/70" },
+  approved:    { label: "Approved",    className: "border-primary/25 bg-primary/10 text-primary", dot: "bg-primary" },
+  sent:        { label: "Sent",        className: "border-primary/30 bg-primary/15 text-primary", dot: "bg-primary" },
+  replied:     { label: "Replied",     className: "border-primary/40 bg-primary text-primary-foreground", dot: "bg-primary-foreground" },
+  in_progress: { label: "In progress", className: "border-border bg-foreground/5 text-foreground", dot: "bg-foreground/60" },
+  won:         { label: "Won",         className: "border-primary/40 bg-primary text-primary-foreground", dot: "bg-primary-foreground" },
+  lost:        { label: "Lost",        className: "border-border bg-transparent text-muted-foreground", dot: "bg-muted-foreground/40" },
+  rejected:    { label: "Rejected",    className: "border-border bg-transparent text-muted-foreground", dot: "bg-muted-foreground/40" },
 };
+
+function StatusPill({ status }: { status: string }) {
+  const s = STATUS_STYLES[status] ?? {
+    label: status.replace(/_/g, " "),
+    className: "border-border bg-muted/60 text-muted-foreground",
+    dot: "bg-muted-foreground/50",
+  };
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium leading-5 tracking-tight ${s.className}`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+      {s.label}
+    </span>
+  );
+}
 
 function ConfidenceBadge({ platform, confidence }: { platform?: string | null; confidence?: number | null }) {
   if (!platform) return <span className="text-xs text-muted-foreground">—</span>;
