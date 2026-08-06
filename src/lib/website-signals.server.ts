@@ -272,25 +272,64 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   const responsive_signals = { viewport: has_viewport, media_queries, responsive_framework, srcset, fluid_container };
   const responsive = has_viewport && (media_queries || responsive_framework || srcset || fluid_container);
 
+  // Did we actually get real markup? If the scrape returned a stub we must not
+  // claim anything is "missing" — that produces false gaps in cold emails.
+  const has_head = /<head[\s>]/i.test(src) || /<meta\s/i.test(src);
+  const html_usable = src.length > 1500 && has_head;
+
+  const capabilities = {} as Record<CapabilityKey, Capability>;
+  const setCap = (k: CapabilityKey, c: Capability) => (capabilities[k] = c);
+
+  for (const key of Object.keys(CAP_TOOL_CATEGORIES) as CapabilityKey[]) {
+    const cats = CAP_TOOL_CATEGORIES[key]!;
+    const tool = tools.find((t) => cats.includes(t.category));
+    if (tool) {
+      setCap(key, { state: "present", via: tool.name, evidence: `${tool.name} script found on the site` });
+      continue;
+    }
+    if (!html_usable) {
+      setCap(key, { state: "unknown", via: null, evidence: "page markup could not be read" });
+      continue;
+    }
+    const native = (NATIVE_EVIDENCE[key] ?? []).find((n) => n.re.test(src));
+    if (native) {
+      setCap(key, { state: "present", via: null, evidence: `built into their site — ${native.note}` });
+      continue;
+    }
+    if (SCRIPT_ONLY.includes(key)) {
+      setCap(key, { state: "absent", via: null, evidence: "no tracking/CRM script in page source" });
+    } else if (NATIVE_EVIDENCE[key]) {
+      setCap(key, { state: "absent", via: null, evidence: "no widget, markup or on-page copy for it" });
+    } else {
+      setCap(key, { state: "unknown", via: null, evidence: "not verifiable from page source" });
+    }
+  }
+
+  setCap("responsive", html_usable
+    ? { state: responsive ? "present" : "absent", via: null, evidence: `viewport=${has_viewport}, media queries=${media_queries}, srcset=${srcset}` }
+    : { state: "unknown", via: null, evidence: "page markup could not be read" });
+  setCap("seo", html_usable
+    ? { state: has_h1 && has_og_image ? "present" : "absent", via: null, evidence: `H1=${has_h1}, OG image=${has_og_image}` }
+    : { state: "unknown", via: null, evidence: "page markup could not be read" });
+
+  // Gaps = only confirmed absences, with evidence. Never guesses.
   const gaps: string[] = [];
-  if (!categories.includes("scheduling")) gaps.push("no calendar/booking tool detected");
-  if (!categories.includes("email_capture")) gaps.push("no email capture / newsletter tool detected");
-  if (!categories.includes("analytics")) gaps.push("no analytics installed");
-  if (!categories.includes("ads_pixel")) gaps.push("no retargeting pixel detected");
-  if (!categories.includes("video")) gaps.push("no video content detected");
-  if (!categories.includes("reviews")) gaps.push("no testimonial/review widget detected");
-  if (!has_og_image) gaps.push("no Open Graph image (poor social shares)");
-  if (!has_h1) gaps.push("no H1 heading (SEO)");
-  if (word_count < 250) gaps.push("thin page copy (<250 words)");
-  if (!responsive) gaps.push("site does not appear mobile-responsive");
+  for (const key of Object.keys(capabilities) as CapabilityKey[]) {
+    const c = capabilities[key];
+    if (c.state === "absent") gaps.push(`no ${CAPABILITY_LABEL[key]} (${c.evidence})`);
+  }
+  if (html_usable && word_count < 250) gaps.push("thin page copy (<250 words)");
 
   return {
     tools,
     categories,
     page: { title, description, word_count, has_h1, has_viewport, has_og_image, outbound_link_count, image_count, responsive, responsive_signals },
     gaps,
+    capabilities,
+    html_usable,
   };
 }
+
 
 export async function measurePerformance(url: string): Promise<WebsiteSignals["performance"]> {
   const target = url.startsWith("http") ? url : `https://${url}`;
