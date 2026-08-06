@@ -109,7 +109,7 @@ function Targeting() {
             const res: any = await enrich({ data: { lead_id: leadId } });
             enriched += 1;
             // Only draft when we actually have a reachable contact.
-            if (res?.lead?.email) {
+            if (res?.email) {
               try {
                 await draft({ data: { lead_id: leadId } });
                 drafted += 1;
