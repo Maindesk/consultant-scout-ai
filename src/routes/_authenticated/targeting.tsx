@@ -309,6 +309,21 @@ function Targeting() {
                 {(c as any).audience_description && (
                   <p className="text-xs text-muted-foreground mt-1 italic">"{(c as any).audience_description}"</p>
                 )}
+                {(c as any).demo_template_name && (
+                  <div className="mt-2 flex items-center gap-2">
+                    {(c as any).demo_template_thumb && (
+                      <img
+                        src={(c as any).demo_template_thumb}
+                        alt={`${(c as any).demo_template_name} template preview`}
+                        className="w-12 h-9 object-cover object-top rounded border"
+                      />
+                    )}
+                    <span className="text-[11px] text-muted-foreground">
+                      Demo template: {(c as any).demo_template_name}
+                    </span>
+                  </div>
+                )}
+
                 <div className="mt-2 flex flex-wrap gap-1">
                   {c.niches.map((n: string) => <Badge key={n} variant="secondary">{n}</Badge>)}
                   {c.locations.map((n: string) => <Badge key={"l-" + n} variant="outline">{n}</Badge>)}
