@@ -151,10 +151,21 @@ function LeadsPage() {
 
 function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
   const getLeadFn = useServerFn(getLead);
+  const enrichFn = useServerFn(enrichLead);
+  const qc = useQueryClient();
   const { data } = useQuery({
     queryKey: ["lead", id],
     queryFn: () => getLeadFn({ data: { id: id! } }),
     enabled: !!id,
+  });
+  const reEnrich = useMutation({
+    mutationFn: () => enrichFn({ data: { lead_id: id! } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["lead", id] });
+      qc.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Re-enriched");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
   return (
@@ -169,12 +180,17 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
               </a>
             </SheetHeader>
             <div className="mt-4 space-y-4 text-sm">
+              <Button size="sm" variant="outline" className="w-full" onClick={() => reEnrich.mutate()} disabled={reEnrich.isPending}>
+                {reEnrich.isPending ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                Re-run enrichment (find name & email)
+              </Button>
               <ContactPanel
                 name={(data.lead as any).name}
                 email={data.lead.email}
                 contacts={(data.enrichment as any)?.website_signals?.contacts}
                 enriched={!!data.enrichment}
               />
+
 
               {data.lead.platform && (
                 <div>
