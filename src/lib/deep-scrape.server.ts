@@ -62,9 +62,11 @@ export async function deepScrapeSite(website: string): Promise<DeepScrapeResult>
   let homeHtml = "";
   let homeMd = "";
   try {
-    const res: any = await fc.scrape(base, { formats: ["markdown", "html"], onlyMainContent: false });
+    // rawHtml keeps <head>, scripts and third-party embeds — the cleaned `html`
+    // format strips exactly the markup our tool/SEO detectors rely on.
+    const res: any = await fc.scrape(base, { formats: ["markdown", "rawHtml", "html"], onlyMainContent: false });
     homeMd = res?.markdown ?? "";
-    homeHtml = res?.html ?? res?.rawHtml ?? "";
+    homeHtml = res?.rawHtml ?? res?.html ?? "";
     pages.push({ url: base, markdown: homeMd, html: homeHtml });
   } catch (e) {
     console.error("deepScrape homepage failed", e);
@@ -104,11 +106,13 @@ export async function deepScrapeSite(website: string): Promise<DeepScrapeResult>
   const extras = await Promise.all(
     ranked.map(async (u) => {
       try {
-        const res: any = await fc.scrape(u, { formats: ["markdown", "html"], onlyMainContent: true });
+        // onlyMainContent:false + rawHtml so footers, forms, mailto links and
+        // embedded widgets on contact/pricing pages are visible to detectors.
+        const res: any = await fc.scrape(u, { formats: ["markdown", "rawHtml", "html"], onlyMainContent: false });
         return {
           url: u,
           markdown: (res?.markdown ?? "") as string,
-          html: (res?.html ?? res?.rawHtml ?? "") as string,
+          html: (res?.rawHtml ?? res?.html ?? "") as string,
         };
       } catch (e) {
         console.warn("deepScrape extra failed", u, (e as Error)?.message);

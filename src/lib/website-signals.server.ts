@@ -132,12 +132,115 @@ export interface WebsiteSignals {
     https: boolean;
   } | null;
   gaps: string[]; // human-readable observations useful for cold emails
+  /** Per-feature verdict with evidence. Only `absent` entries are real gaps. */
+  capabilities: Record<CapabilityKey, Capability>;
+  /** False when the scrape returned too little markup to judge anything. */
+  html_usable: boolean;
 }
+
+export type CapabilityKey =
+  | "booking"
+  | "email_capture"
+  | "forms"
+  | "popup"
+  | "chat"
+  | "payments"
+  | "membership"
+  | "reviews"
+  | "crm"
+  | "analytics"
+  | "ads_pixel"
+  | "responsive"
+  | "seo";
+
+export interface Capability {
+  state: "present" | "absent" | "unknown";
+  /** Third-party product providing it (i.e. a consolidation opportunity). */
+  via: string | null;
+  /** Why we decided that — shown in the UI and fed to the AI. */
+  evidence: string | null;
+}
+
+const CAPABILITY_LABEL: Record<CapabilityKey, string> = {
+  booking: "booking/appointments",
+  email_capture: "email capture / newsletter",
+  forms: "contact forms / lead intake",
+  popup: "popups & exit-intent",
+  chat: "live chat",
+  payments: "payments & checkout",
+  membership: "memberships & courses",
+  reviews: "testimonials & reviews",
+  crm: "CRM & pipeline",
+  analytics: "analytics",
+  ads_pixel: "retargeting pixel",
+  responsive: "mobile-responsive layout",
+  seo: "SEO basics (H1 + OG image)",
+};
+
+/**
+ * Native (platform built-in) evidence — a site can absolutely have booking or
+ * a newsletter without any third-party script, so tool detection alone
+ * produces false "Missing" verdicts. These patterns look for the feature
+ * itself in the markup.
+ */
+const NATIVE_EVIDENCE: Partial<Record<CapabilityKey, Array<{ re: RegExp; note: string }>>> = {
+  booking: [
+    { re: /href=["'][^"']*\/(book|booking|bookings|appointments?|schedule|reserve)\b/i, note: "booking page link" },
+    { re: /\b(book (?:a|your) (?:call|appointment|session|table)|schedule (?:a|your) (?:call|appointment|consultation)|request an appointment)\b/i, note: "booking CTA copy" },
+    { re: /(setmore|simplybook|square\.site\/book|opentable|resy|mindbody|vagaro|booksy|fresha|schedulicity|appointlet|youcanbook\.me|10to8)/i, note: "booking provider" },
+  ],
+  email_capture: [
+    { re: /<input[^>]+type=["']email["']/i, note: "email input field" },
+    { re: /(mc4wp|sqs-block-newsletter|newsletter-form|klaviyo-form|kl_?newsletter|omnisend|form[^>]*newsletter)/i, note: "newsletter form block" },
+    { re: /\b(subscribe to (?:our|the) (?:newsletter|list)|join (?:our|the) (?:newsletter|mailing list)|get (?:the )?free (?:guide|checklist|ebook))\b/i, note: "newsletter/lead-magnet copy" },
+  ],
+  forms: [
+    { re: /<form[\s>][\s\S]{0,4000}?<textarea/i, note: "form with message field" },
+    { re: /<form[\s>][\s\S]{0,2000}?<input[^>]+(name|id)=["'][^"']*(name|phone|message|subject)/i, note: "contact form fields" },
+    { re: /(wpcf7|gravity_?form|wpforms|ninja_?forms|sqs-block-form|w-form|hs-form)/i, note: "form plugin markup" },
+  ],
+  payments: [
+    { re: /(\/cart\/add|add-to-cart|data-product-id|woocommerce|snipcart|shopify-payment-button|\/checkout\b)/i, note: "cart / checkout markup" },
+    { re: /(sqs-money|product-price|itemprop=["']price["']|"priceCurrency")/i, note: "priced product markup" },
+  ],
+  membership: [
+    { re: /href=["'][^"']*\/(members?|member-area|my-account|account\/login|portal|student|courses?\/login)\b/i, note: "member/login area link" },
+    { re: /(memberpress|learndash|lifterlms|tutor-lms|wp-login\.php|thinkific|teachable|kajabi)/i, note: "membership platform markup" },
+  ],
+  reviews: [
+    { re: /("@type"\s*:\s*"(Review|AggregateRating)"|itemprop=["']aggregateRating["'])/i, note: "review schema markup" },
+    { re: /(testimonial|what (?:our )?clients say|success stories|5-star|five star)/i, note: "testimonial section copy" },
+  ],
+  popup: [
+    { re: /(exit-intent|data-popup|class=["'][^"']*\b(popup|modal-newsletter|lightbox-newsletter)\b)/i, note: "popup markup" },
+  ],
+  chat: [
+    { re: /(href=["']https:\/\/(wa\.me|api\.whatsapp\.com)|class=["'][^"']*live-?chat)/i, note: "chat/WhatsApp widget" },
+  ],
+};
+
+/** Categories only ever detectable through scripts in <head>/<body>. */
+const SCRIPT_ONLY: CapabilityKey[] = ["analytics", "ads_pixel", "crm"];
+
+const CAP_TOOL_CATEGORIES: Partial<Record<CapabilityKey, SignalCategory[]>> = {
+  booking: ["scheduling"],
+  email_capture: ["email_capture"],
+  forms: ["forms"],
+  popup: ["popup"],
+  chat: ["chat"],
+  payments: ["payments", "ecommerce"],
+  membership: ["membership"],
+  reviews: ["reviews"],
+  crm: ["crm"],
+  analytics: ["analytics"],
+  ads_pixel: ["ads_pixel"],
+};
 
 function extractMeta(html: string, name: string): string | null {
   const re = new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]+content=["']([^"']+)["']`, "i");
   return html.match(re)?.[1] ?? null;
 }
+
 
 export function detectSignals(html?: string | null): Omit<WebsiteSignals, "performance"> {
   const src = html ?? "";
@@ -158,8 +261,9 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   const text = src.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
   const word_count = text.split(/\s+/).filter(Boolean).length;
   const has_h1 = /<h1[\s>]/i.test(src);
-  const has_viewport = /<meta[^>]+name=["']viewport["'][^>]*content=["'][^"']*width=/i.test(src);
-  const has_og_image = /<meta[^>]+property=["']og:image["']/i.test(src);
+  // Attribute order varies wildly between builders — match the tag, not a field order.
+  const has_viewport = /<meta[^>]*name=["']viewport["'][^>]*>/i.test(src) || /<meta[^>]*content=["'][^"']*width=device-width[^>]*>/i.test(src);
+  const has_og_image = /<meta[^>]*(?:property|name)=["']og:image(?::secure_url)?["'][^>]*>/i.test(src) || /<meta[^>]*name=["']twitter:image["'][^>]*>/i.test(src);
   const outbound_link_count = (src.match(/<a\s[^>]*href=["']https?:\/\//gi) ?? []).length;
   const image_count = (src.match(/<img\s/gi) ?? []).length;
   const media_queries = /@media[^{]*\(([^)]*max-width|[^)]*min-width)/i.test(src);
@@ -169,25 +273,64 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   const responsive_signals = { viewport: has_viewport, media_queries, responsive_framework, srcset, fluid_container };
   const responsive = has_viewport && (media_queries || responsive_framework || srcset || fluid_container);
 
+  // Did we actually get real markup? If the scrape returned a stub we must not
+  // claim anything is "missing" — that produces false gaps in cold emails.
+  const has_head = /<head[\s>]/i.test(src) || /<meta\s/i.test(src);
+  const html_usable = src.length > 1500 && has_head;
+
+  const capabilities = {} as Record<CapabilityKey, Capability>;
+  const setCap = (k: CapabilityKey, c: Capability) => (capabilities[k] = c);
+
+  for (const key of Object.keys(CAP_TOOL_CATEGORIES) as CapabilityKey[]) {
+    const cats = CAP_TOOL_CATEGORIES[key]!;
+    const tool = tools.find((t) => cats.includes(t.category));
+    if (tool) {
+      setCap(key, { state: "present", via: tool.name, evidence: `${tool.name} script found on the site` });
+      continue;
+    }
+    if (!html_usable) {
+      setCap(key, { state: "unknown", via: null, evidence: "page markup could not be read" });
+      continue;
+    }
+    const native = (NATIVE_EVIDENCE[key] ?? []).find((n) => n.re.test(src));
+    if (native) {
+      setCap(key, { state: "present", via: null, evidence: `built into their site — ${native.note}` });
+      continue;
+    }
+    if (SCRIPT_ONLY.includes(key)) {
+      setCap(key, { state: "absent", via: null, evidence: "no tracking/CRM script in page source" });
+    } else if (NATIVE_EVIDENCE[key]) {
+      setCap(key, { state: "absent", via: null, evidence: "no widget, markup or on-page copy for it" });
+    } else {
+      setCap(key, { state: "unknown", via: null, evidence: "not verifiable from page source" });
+    }
+  }
+
+  setCap("responsive", html_usable
+    ? { state: responsive ? "present" : "absent", via: null, evidence: `viewport=${has_viewport}, media queries=${media_queries}, srcset=${srcset}` }
+    : { state: "unknown", via: null, evidence: "page markup could not be read" });
+  setCap("seo", html_usable
+    ? { state: has_h1 && has_og_image ? "present" : "absent", via: null, evidence: `H1=${has_h1}, OG image=${has_og_image}` }
+    : { state: "unknown", via: null, evidence: "page markup could not be read" });
+
+  // Gaps = only confirmed absences, with evidence. Never guesses.
   const gaps: string[] = [];
-  if (!categories.includes("scheduling")) gaps.push("no calendar/booking tool detected");
-  if (!categories.includes("email_capture")) gaps.push("no email capture / newsletter tool detected");
-  if (!categories.includes("analytics")) gaps.push("no analytics installed");
-  if (!categories.includes("ads_pixel")) gaps.push("no retargeting pixel detected");
-  if (!categories.includes("video")) gaps.push("no video content detected");
-  if (!categories.includes("reviews")) gaps.push("no testimonial/review widget detected");
-  if (!has_og_image) gaps.push("no Open Graph image (poor social shares)");
-  if (!has_h1) gaps.push("no H1 heading (SEO)");
-  if (word_count < 250) gaps.push("thin page copy (<250 words)");
-  if (!responsive) gaps.push("site does not appear mobile-responsive");
+  for (const key of Object.keys(capabilities) as CapabilityKey[]) {
+    const c = capabilities[key];
+    if (c.state === "absent") gaps.push(`no ${CAPABILITY_LABEL[key]} (${c.evidence})`);
+  }
+  if (html_usable && word_count < 250) gaps.push("thin page copy (<250 words)");
 
   return {
     tools,
     categories,
     page: { title, description, word_count, has_h1, has_viewport, has_og_image, outbound_link_count, image_count, responsive, responsive_signals },
     gaps,
+    capabilities,
+    html_usable,
   };
 }
+
 
 export async function measurePerformance(url: string): Promise<WebsiteSignals["performance"]> {
   const target = url.startsWith("http") ? url : `https://${url}`;
@@ -229,10 +372,20 @@ export function summarizeSignalsForPrompt(s?: WebsiteSignals | null): string {
   const perf = s.performance
     ? `HTTP ${s.performance.status ?? "n/a"}, TTFB ${s.performance.ttfb_ms ?? "?"}ms, total ${s.performance.total_ms ?? "?"}ms, ${s.performance.bytes ? Math.round(s.performance.bytes / 1024) + "KB" : "size unknown"}`
     : "n/a";
+  const caps = s.capabilities
+    ? (Object.keys(s.capabilities) as CapabilityKey[])
+        .map((k) => `${CAPABILITY_LABEL[k]}: ${s.capabilities[k].state}${s.capabilities[k].via ? ` (via ${s.capabilities[k].via})` : ""} — ${s.capabilities[k].evidence ?? ""}`)
+        .join("\n")
+    : "(not computed)";
   return [
     `Tools detected: ${toolLine}`,
     `Page: title="${s.page.title ?? ""}", ${s.page.word_count} words, H1=${s.page.has_h1}, OG image=${s.page.has_og_image}`,
     `Performance: ${perf}`,
-    `Gaps: ${s.gaps.join("; ") || "none"}`,
-  ].join("\n");
+    `Feature verdicts (present = they already have it, absent = verified gap, unknown = DO NOT mention):\n${caps}`,
+    `Confirmed gaps: ${s.gaps.join("; ") || "none"}`,
+    s.html_usable === false
+      ? "WARNING: page markup was unreadable — do not claim anything is missing on their site."
+      : "",
+  ].filter(Boolean).join("\n");
 }
+

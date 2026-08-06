@@ -104,8 +104,10 @@ Prospect:
 - Their audience: ${enrichment?.target_audience ?? ""}
 - Pain points detected: ${JSON.stringify(enrichment?.pain_points ?? [])}
 - Embedded 3rd-party tools stitched onto their site: ${JSON.stringify(tools)}
-- Website gaps: ${JSON.stringify(gaps)}
+- VERIFIED gaps (evidence-checked, safe to reference): ${JSON.stringify(gaps)}
+- Feature verdicts (present = they already have it, absent = verified gap, unknown = NEVER claim it is missing): ${JSON.stringify((enrichment as any)?.website_signals?.capabilities ?? {})}
 - Page perf: ${JSON.stringify((enrichment as any)?.website_signals?.performance ?? {})}
+- NEVER state or imply a feature is missing unless its verdict is "absent". If a verdict is "unknown" or the markup was unreadable, stay away from that claim entirely.
 
 Campaign goal: ${EMAIL_GOAL_LABELS[goal as keyof typeof EMAIL_GOAL_LABELS] ?? goal}
 ${goalFraming(goal)}

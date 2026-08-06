@@ -704,111 +704,55 @@ function WebsiteSignalsPanel({ signals }: { signals: any }) {
 }
 
 // Features every white-label platform (Simvoly/Maindesk-based) includes out of the box.
-// Compared against what we detected on the prospect's live site so the user can see —
-// at a glance — which paid third-party tools become redundant after switching.
-const PLATFORM_FEATURES: Array<{
-  label: string;
-  check: (s: any) => { has: boolean; via?: string | null };
-}> = [
-  {
-    label: "Booking & appointments",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "scheduling");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Email capture & newsletter",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "email_capture");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Forms & lead intake",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "forms");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Popups & exit-intent",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "popup");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Live chat",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "chat");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Payments & checkout",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "payments" || x.category === "ecommerce");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Memberships & courses",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "membership");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Testimonials & reviews",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "reviews");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "CRM & pipeline",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "crm");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Analytics",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "analytics");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Retargeting pixels",
-    check: (s) => {
-      const t = (s.tools ?? []).find((x: any) => x.category === "ads_pixel");
-      return { has: !!t, via: t?.name };
-    },
-  },
-  {
-    label: "Mobile-responsive",
-    check: (s) => ({ has: !!s?.page?.responsive, via: null }),
-  },
-  {
-    label: "SEO basics (H1 + OG image)",
-    check: (s) => ({ has: !!s?.page?.has_h1 && !!s?.page?.has_og_image, via: null }),
-  },
+// Verdicts come from the enrichment engine's evidence-based capability detection
+// (third-party script OR native markup OR on-page copy), never from tool detection alone.
+const PLATFORM_FEATURES: Array<{ key: string; label: string }> = [
+  { key: "booking", label: "Booking & appointments" },
+  { key: "email_capture", label: "Email capture & newsletter" },
+  { key: "forms", label: "Forms & lead intake" },
+  { key: "popup", label: "Popups & exit-intent" },
+  { key: "chat", label: "Live chat" },
+  { key: "payments", label: "Payments & checkout" },
+  { key: "membership", label: "Memberships & courses" },
+  { key: "reviews", label: "Testimonials & reviews" },
+  { key: "crm", label: "CRM & pipeline" },
+  { key: "analytics", label: "Analytics" },
+  { key: "ads_pixel", label: "Retargeting pixels" },
+  { key: "responsive", label: "Mobile-responsive" },
+  { key: "seo", label: "SEO basics (H1 + OG image)" },
 ];
 
+type CapCell = { state: "present" | "absent" | "unknown"; via: string | null; evidence: string | null };
+
 function FeatureComparisonTable({ signals }: { signals: any }) {
-  const rows = PLATFORM_FEATURES.map((f) => ({ label: f.label, ...f.check(signals) }));
-  const missing = rows.filter((r) => !r.has).length;
-  const stacked = rows.filter((r) => r.has && r.via).length;
+  const caps = (signals?.capabilities ?? {}) as Record<string, CapCell>;
+  const usable = signals?.html_usable !== false;
+  const rows = PLATFORM_FEATURES.map((f) => {
+    const c = caps[f.key];
+    const cell: CapCell = c ?? { state: "unknown", via: null, evidence: "re-run enrichment to compute" };
+    return { label: f.label, ...cell };
+  });
+  const missing = rows.filter((r) => r.state === "absent").length;
+  const stacked = rows.filter((r) => r.state === "present" && r.via).length;
+  const unknown = rows.filter((r) => r.state === "unknown").length;
+
   return (
     <div className="border-t pt-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="text-xs font-medium text-muted-foreground">Feature comparison</div>
         <div className="text-[10px] text-muted-foreground">
-          {missing} gap{missing === 1 ? "" : "s"} · {stacked} tool{stacked === 1 ? "" : "s"} to consolidate
+          {missing} verified gap{missing === 1 ? "" : "s"} · {stacked} tool{stacked === 1 ? "" : "s"} to consolidate
+          {unknown > 0 && <> · {unknown} unverified</>}
         </div>
       </div>
+
+      {!usable && (
+        <div className="text-[10px] rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-700 px-2 py-1.5">
+          We couldn't read this site's page source, so nothing below is confirmed missing. Re-run enrichment before
+          using these points in an email.
+        </div>
+      )}
+
       <div className="border rounded-lg overflow-hidden">
         <table className="w-full text-xs">
           <thead className="bg-muted/60">
@@ -820,19 +764,27 @@ function FeatureComparisonTable({ signals }: { signals: any }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.label} className="border-t border-border">
+              <tr key={r.label} className="border-t border-border align-top">
                 <td className="px-3 py-2">{r.label}</td>
-                <td className="px-3 py-2">
-                  {r.has ? (
+                <td className="px-3 py-2" title={r.evidence ?? undefined}>
+                  {r.state === "present" ? (
                     <span className="inline-flex items-center gap-1">
-                      <span className="text-amber-600">●</span>
-                      <span>{r.via ? `via ${r.via}` : "Yes"}</span>
+                      <span className={r.via ? "text-amber-600" : "text-muted-foreground"}>●</span>
+                      <span>{r.via ? `via ${r.via}` : "Has it"}</span>
                     </span>
-                  ) : (
+                  ) : r.state === "absent" ? (
                     <span className="inline-flex items-center gap-1 text-red-600">
                       <span>✕</span>
                       <span>Missing</span>
                     </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-muted-foreground">
+                      <span>?</span>
+                      <span>Not verified</span>
+                    </span>
+                  )}
+                  {r.evidence && (
+                    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{r.evidence}</div>
                   )}
                 </td>
                 <td className="px-3 py-2">
@@ -847,9 +799,13 @@ function FeatureComparisonTable({ signals }: { signals: any }) {
         </table>
       </div>
       <p className="text-[10px] text-muted-foreground leading-relaxed">
-        <span className="text-red-600">✕ Missing</span> = gap on their site · <span className="text-amber-600">●</span> = using a paid 3rd-party tool your platform replaces · <span className="text-green-700">✓</span> = included in your white-label.
+        <span className="text-red-600">✕ Missing</span> = verified gap (no widget, markup or copy for it) ·{" "}
+        <span className="text-amber-600">●</span> = paid 3rd-party tool your platform replaces · ● grey = built into
+        their current site · <span>?</span> = not verifiable, never used in emails ·{" "}
+        <span className="text-green-700">✓</span> = included in your white-label.
       </p>
     </div>
   );
 }
+
 
