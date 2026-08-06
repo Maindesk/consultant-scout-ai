@@ -178,46 +178,72 @@ const CAPABILITY_LABEL: Record<CapabilityKey, string> = {
 };
 
 /**
- * Native (platform built-in) evidence — a site can absolutely have booking or
- * a newsletter without any third-party script, so tool detection alone
- * produces false "Missing" verdicts. These patterns look for the feature
- * itself in the markup.
+ * Native (platform built-in) evidence.
+ *
+ * Two rules keep this honest:
+ *  1. `scope: "visible"` patterns are matched against markup with <script>,
+ *     <style>, <noscript> and HTML comments stripped. Theme JS and CSS mention
+ *     "add-to-cart", "/checkout" and "schedule" on nearly every Squarespace /
+ *     Shopify theme even when the site sells nothing and books nothing.
+ *  2. Only `strength: "strong"` evidence (a real link, element or provider
+ *     embed) proves the feature. A `weak` match (marketing copy) is reported
+ *     as `unknown`, never as "Has it".
  */
-const NATIVE_EVIDENCE: Partial<Record<CapabilityKey, Array<{ re: RegExp; note: string }>>> = {
+type NativeRule = { re: RegExp; note: string; strength: "strong" | "weak"; scope: "visible" | "raw" };
+
+const NATIVE_EVIDENCE: Partial<Record<CapabilityKey, NativeRule[]>> = {
   booking: [
-    { re: /href=["'][^"']*\/(book|booking|bookings|appointments?|schedule|reserve)\b/i, note: "booking page link" },
-    { re: /\b(book (?:a|your) (?:call|appointment|session|table)|schedule (?:a|your) (?:call|appointment|consultation)|request an appointment)\b/i, note: "booking CTA copy" },
-    { re: /(setmore|simplybook|square\.site\/book|opentable|resy|mindbody|vagaro|booksy|fresha|schedulicity|appointlet|youcanbook\.me|10to8)/i, note: "booking provider" },
+    // A real navigable booking destination, not a word in a script.
+    { re: /<a[^>]+href=["'][^"']*\/(book-?(?:now|online|a-[a-z]+)?|booking|bookings|appointments?|schedule-?(?:now|a-[a-z]+)?|reserve|make-a-reservation)(?:[\/"'?#]|$)/i, note: "link to a booking page", strength: "strong", scope: "visible" },
+    { re: /<(iframe|script)[^>]+(setmore|simplybook|square\.site\/book|opentable|resy|mindbody|vagaro|booksy|fresha|schedulicity|appointlet|youcanbook\.me|10to8|calendly|acuityscheduling|squarespacescheduling)/i, note: "embedded booking provider", strength: "strong", scope: "raw" },
+    { re: /\b(book (?:a|your) (?:call|appointment|session|table)|schedule (?:a|your) (?:call|appointment|consultation))\b/i, note: "booking wording in page copy (no booking page found)", strength: "weak", scope: "visible" },
   ],
   email_capture: [
-    { re: /<input[^>]+type=["']email["']/i, note: "email input field" },
-    { re: /(mc4wp|sqs-block-newsletter|newsletter-form|klaviyo-form|kl_?newsletter|omnisend|form[^>]*newsletter)/i, note: "newsletter form block" },
-    { re: /\b(subscribe to (?:our|the) (?:newsletter|list)|join (?:our|the) (?:newsletter|mailing list)|get (?:the )?free (?:guide|checklist|ebook))\b/i, note: "newsletter/lead-magnet copy" },
+    { re: /<form[\s>][\s\S]{0,3000}?<input[^>]+type=["']email["']/i, note: "signup form with an email field", strength: "strong", scope: "visible" },
+    { re: /(mc4wp|sqs-block-newsletter|klaviyo-form|omnisend-embed|ml-subscribe-form|ck-form|newsletter-form)/i, note: "newsletter form block", strength: "strong", scope: "visible" },
+    { re: /\b(subscribe to (?:our|the) (?:newsletter|list)|join (?:our|the) (?:newsletter|mailing list))\b/i, note: "newsletter wording only", strength: "weak", scope: "visible" },
   ],
   forms: [
-    { re: /<form[\s>][\s\S]{0,4000}?<textarea/i, note: "form with message field" },
-    { re: /<form[\s>][\s\S]{0,2000}?<input[^>]+(name|id)=["'][^"']*(name|phone|message|subject)/i, note: "contact form fields" },
-    { re: /(wpcf7|gravity_?form|wpforms|ninja_?forms|sqs-block-form|w-form|hs-form)/i, note: "form plugin markup" },
+    { re: /<form[\s>][\s\S]{0,4000}?<textarea/i, note: "form with a message field", strength: "strong", scope: "visible" },
+    { re: /<form[\s>][\s\S]{0,2000}?<input[^>]+(?:name|id)=["'][^"']*(?:fname|lname|full-?name|phone|message|subject)/i, note: "contact form fields", strength: "strong", scope: "visible" },
+    { re: /(wpcf7-form|gravity_form|wpforms-form|nf-form|sqs-block-form|w-form|hs-form)/i, note: "form plugin markup", strength: "strong", scope: "visible" },
   ],
   payments: [
-    { re: /(\/cart\/add|add-to-cart|data-product-id|woocommerce|snipcart|shopify-payment-button|\/checkout\b)/i, note: "cart / checkout markup" },
-    { re: /(sqs-money|product-price|itemprop=["']price["']|"priceCurrency")/i, note: "priced product markup" },
+    // Real storefront surfaces only.
+    { re: /<(?:a|button|form)[^>]+(?:href|action)=["'][^"']*\/(?:cart\/add|checkout|cart)(?:[\/"'?#]|$)/i, note: "cart or checkout link", strength: "strong", scope: "visible" },
+    // Must be an actual buy control. Squarespace puts "tweak-…-add-to-cart-button-…"
+    // template flags on <body> of every site, store or not — that is not evidence.
+    { re: /<(?:a|button|input|form)[^>]*(?:class|id|data-[a-z-]+)=["'][^"']*(?:shopify-payment-button|add-to-cart|snipcart-add-item|single_add_to_cart|sqs-add-to-cart)/i, note: "add-to-cart / buy button", strength: "strong", scope: "visible" },
+    { re: /<[^>]+class=["'][^"']*woocommerce-Price-amount/i, note: "product pricing on a store page", strength: "strong", scope: "visible" },
+    { re: /"@type"\s*:\s*"(?:Product|Offer)"[\s\S]{0,400}?"price"/i, note: "product offer schema", strength: "strong", scope: "raw" },
+    { re: /(itemprop=["']price["']|sqs-money-native)/i, note: "price markup only", strength: "weak", scope: "visible" },
   ],
   membership: [
-    { re: /href=["'][^"']*\/(members?|member-area|my-account|account\/login|portal|student|courses?\/login)\b/i, note: "member/login area link" },
-    { re: /(memberpress|learndash|lifterlms|tutor-lms|wp-login\.php|thinkific|teachable|kajabi)/i, note: "membership platform markup" },
+    { re: /<a[^>]+href=["'][^"']*\/(members?|member-area|my-account|account\/login|client-portal|student-login|courses?\/login)(?:[\/"'?#]|$)/i, note: "member login link", strength: "strong", scope: "visible" },
+    { re: /(memberpress|learndash|lifterlms|tutor-lms|memberspace|thinkific|teachable|kajabi)/i, note: "membership platform markup", strength: "strong", scope: "raw" },
   ],
   reviews: [
-    { re: /("@type"\s*:\s*"(Review|AggregateRating)"|itemprop=["']aggregateRating["'])/i, note: "review schema markup" },
-    { re: /(testimonial|what (?:our )?clients say|success stories|5-star|five star)/i, note: "testimonial section copy" },
+    { re: /"@type"\s*:\s*"(?:Review|AggregateRating)"/i, note: "review schema markup", strength: "strong", scope: "raw" },
+    { re: /(testimonial|what (?:our )?clients say|success stories|kind words)/i, note: "testimonial section", strength: "strong", scope: "visible" },
   ],
   popup: [
-    { re: /(exit-intent|data-popup|class=["'][^"']*\b(popup|modal-newsletter|lightbox-newsletter)\b)/i, note: "popup markup" },
+    { re: /(exit-intent|data-popup-|class=["'][^"']*\b(?:popup-newsletter|modal-newsletter|lightbox-newsletter)\b)/i, note: "popup markup", strength: "strong", scope: "visible" },
   ],
   chat: [
-    { re: /(href=["']https:\/\/(wa\.me|api\.whatsapp\.com)|class=["'][^"']*live-?chat)/i, note: "chat/WhatsApp widget" },
+    { re: /<a[^>]+href=["']https:\/\/(?:wa\.me|api\.whatsapp\.com)/i, note: "WhatsApp chat link", strength: "strong", scope: "visible" },
+    { re: /class=["'][^"']*\blive-?chat\b/i, note: "chat widget markup", strength: "strong", scope: "visible" },
   ],
 };
+
+/** Markup a human would actually see: no scripts, styles, comments or JSON blobs. */
+function visibleMarkup(src: string): string {
+  return src
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<template[\s\S]*?<\/template>/gi, " ");
+}
 
 /** Categories only ever detectable through scripts in <head>/<body>. */
 const SCRIPT_ONLY: CapabilityKey[] = ["analytics", "ads_pixel", "crm"];
@@ -278,6 +304,8 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   const has_head = /<head[\s>]/i.test(src) || /<meta\s/i.test(src);
   const html_usable = src.length > 1500 && has_head;
 
+  const visible = visibleMarkup(src);
+
   const capabilities = {} as Record<CapabilityKey, Capability>;
   const setCap = (k: CapabilityKey, c: Capability) => (capabilities[k] = c);
 
@@ -292,15 +320,22 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
       setCap(key, { state: "unknown", via: null, evidence: "page markup could not be read" });
       continue;
     }
-    const native = (NATIVE_EVIDENCE[key] ?? []).find((n) => n.re.test(src));
-    if (native) {
-      setCap(key, { state: "present", via: null, evidence: `built into their site — ${native.note}` });
+    const rules = NATIVE_EVIDENCE[key] ?? [];
+    const match = (r: NativeRule) => r.re.test(r.scope === "raw" ? src : visible);
+    const strong = rules.find((r) => r.strength === "strong" && match(r));
+    if (strong) {
+      setCap(key, { state: "present", via: null, evidence: `built into their site — ${strong.note}` });
+      continue;
+    }
+    const weak = rules.find((r) => r.strength === "weak" && match(r));
+    if (weak) {
+      setCap(key, { state: "unknown", via: null, evidence: `unconfirmed — ${weak.note}` });
       continue;
     }
     if (SCRIPT_ONLY.includes(key)) {
       setCap(key, { state: "absent", via: null, evidence: "no tracking/CRM script in page source" });
-    } else if (NATIVE_EVIDENCE[key]) {
-      setCap(key, { state: "absent", via: null, evidence: "no widget, markup or on-page copy for it" });
+    } else if (rules.length) {
+      setCap(key, { state: "absent", via: null, evidence: "no widget, link or markup for it on the pages we scanned" });
     } else {
       setCap(key, { state: "unknown", via: null, evidence: "not verifiable from page source" });
     }
