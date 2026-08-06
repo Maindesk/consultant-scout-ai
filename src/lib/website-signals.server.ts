@@ -261,8 +261,9 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   const text = src.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ");
   const word_count = text.split(/\s+/).filter(Boolean).length;
   const has_h1 = /<h1[\s>]/i.test(src);
-  const has_viewport = /<meta[^>]+name=["']viewport["'][^>]*content=["'][^"']*width=/i.test(src);
-  const has_og_image = /<meta[^>]+property=["']og:image["']/i.test(src);
+  // Attribute order varies wildly between builders — match the tag, not a field order.
+  const has_viewport = /<meta[^>]*name=["']viewport["'][^>]*>/i.test(src) || /<meta[^>]*content=["'][^"']*width=device-width[^>]*>/i.test(src);
+  const has_og_image = /<meta[^>]*(?:property|name)=["']og:image(?::secure_url)?["'][^>]*>/i.test(src) || /<meta[^>]*name=["']twitter:image["'][^>]*>/i.test(src);
   const outbound_link_count = (src.match(/<a\s[^>]*href=["']https?:\/\//gi) ?? []).length;
   const image_count = (src.match(/<img\s/gi) ?? []).length;
   const media_queries = /@media[^{]*\(([^)]*max-width|[^)]*min-width)/i.test(src);
