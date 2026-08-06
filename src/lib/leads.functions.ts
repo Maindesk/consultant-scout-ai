@@ -184,8 +184,13 @@ const EnrichmentSchema = z.object({
   pricing_signals: z.string(),
   funnel_presence: z.string(),
   contact_email: z.string().nullable(),
+  /** The person behind the business (owner/founder/main contact), if named. */
+  contact_name: z.string().nullable(),
+  /** Clean brand/company name (not the page title). */
+  company_name: z.string().nullable(),
   pain_points: z.array(z.object({ title: z.string(), description: z.string() })),
 });
+
 
 export const enrichLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -251,14 +256,23 @@ export const enrichLead = createServerFn({ method: "POST" })
       if (!q.ok) throw new Error(q.message ?? "AI credit quota exceeded");
     }
 
+    // Deterministic contact mining over the FULL scraped HTML (mailto:, footer,
+    // contact page) — the AI pass only sees truncated markdown.
+    const { extractContacts } = await import("./contact-extract.server");
+    const contacts = extractContacts({ html, markdown, siteDomain: lead.domain });
+
     const gateway = getLovableGateway();
     let output: z.infer<typeof EnrichmentSchema>;
     let totalTokens = 0;
-    const prompt = `Analyze this business website and extract structured intel. Find contact email if visible on the page. Return ONLY JSON matching the schema; use empty strings for unknown text fields, null for contact_email if not found, and [] for pain_points if none.
+    const prompt = `Analyze this business website and extract structured intel.
+Also identify: the real contact/booking email if visible, the person behind the business (owner, founder, coach, main contact) and the clean brand name (NOT the page title / tagline).
+Return ONLY JSON matching the schema; use empty strings for unknown text fields, null for contact_email/contact_name/company_name if not found, and [] for pain_points if none.
 
 URL: ${lead.website}
-Business name: ${lead.business_name ?? "unknown"}
+Page title: ${lead.business_name ?? "unknown"}
 Detected platform: ${platform ?? "unknown"}
+Emails found in page source: ${contacts.emails.length ? contacts.emails.join(", ") : "(none)"}
+Phones found: ${contacts.phones.join(", ") || "(none)"}
 
 Website signals (embedded 3rd-party tools, page metrics, perf, gaps):
 ${summarizeSignalsForPrompt(signals)}
@@ -291,6 +305,8 @@ ${markdown.slice(0, 15000) || "(no content)"}
         pricing_signals: String(p.pricing_signals ?? ""),
         funnel_presence: String(p.funnel_presence ?? ""),
         contact_email: p.contact_email ? String(p.contact_email) : null,
+        contact_name: p.contact_name ? String(p.contact_name) : null,
+        company_name: p.company_name ? String(p.company_name) : null,
         pain_points: Array.isArray(p.pain_points)
           ? p.pain_points
               .filter((x: any) => x && (x.title || x.description))
@@ -300,6 +316,13 @@ ${markdown.slice(0, 15000) || "(no content)"}
     }
     if (workspaceId) await recordUsage(workspaceId, { ai: estimateAiCredits(totalTokens) });
 
+    // Regex-mined email wins (verifiable), AI email is the fallback.
+    const aiEmail = output.contact_email && output.contact_email.includes("@")
+      ? output.contact_email.trim().toLowerCase()
+      : null;
+    const resolvedEmail = contacts.email ?? aiEmail ?? lead.email ?? null;
+    const resolvedName = output.contact_name?.trim() || lead.name || null;
+    const resolvedBusinessName = output.company_name?.trim() || lead.business_name || null;
 
     const { error: upsertErr } = await context.supabase.from("lead_enrichments").upsert(
       {
@@ -312,7 +335,17 @@ ${markdown.slice(0, 15000) || "(no content)"}
         funnel_presence: output.funnel_presence,
         pain_points: output.pain_points,
         raw_markdown: markdown.slice(0, 20000),
-        website_signals: { ...(signals as any), pages_scraped: pagesScraped, page_urls: pageUrls },
+        website_signals: {
+          ...(signals as any),
+          pages_scraped: pagesScraped,
+          page_urls: pageUrls,
+          contacts: {
+            emails: contacts.emails,
+            phones: contacts.phones,
+            socials: contacts.socials,
+            email_source: contacts.email_source,
+          },
+        },
       },
       { onConflict: "lead_id" },
     );
@@ -325,7 +358,9 @@ ${markdown.slice(0, 15000) || "(no content)"}
       .from("leads")
       .update({
         status: "enriched",
-        email: output.contact_email ?? lead.email,
+        email: resolvedEmail,
+        name: resolvedName,
+        business_name: resolvedBusinessName,
         platform,
         platform_confidence: detection.confidence,
         platform_matches: detection.matches,
@@ -337,7 +372,15 @@ ${markdown.slice(0, 15000) || "(no content)"}
       throw new Error(`Failed to update lead status: ${updateErr.message}`);
     }
 
-    return { ok: true, platform, confidence: detection.confidence };
+    return {
+      ok: true,
+      platform,
+      confidence: detection.confidence,
+      email: resolvedEmail,
+      contact_name: resolvedName,
+      emails_found: contacts.emails.length,
+    };
+
   });
 
 

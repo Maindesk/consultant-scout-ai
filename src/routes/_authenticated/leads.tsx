@@ -154,7 +154,13 @@ function LeadDrawer({ id, onClose }: { id: string | null; onClose: () => void })
               </a>
             </SheetHeader>
             <div className="mt-4 space-y-4 text-sm">
-              {data.lead.email && <div><span className="text-muted-foreground">Email:</span> {data.lead.email}</div>}
+              <ContactPanel
+                name={(data.lead as any).name}
+                email={data.lead.email}
+                contacts={(data.enrichment as any)?.website_signals?.contacts}
+                enriched={!!data.enrichment}
+              />
+
               {data.lead.platform && (
                 <div>
                   <div className="text-xs font-medium text-muted-foreground mb-1">Detected platform</div>
@@ -518,7 +524,56 @@ function MainSiteTagPanel({
 
 
 
+function ContactPanel({
+  name,
+  email,
+  contacts,
+  enriched,
+}: {
+  name?: string | null;
+  email?: string | null;
+  contacts?: { emails?: string[]; phones?: string[]; socials?: string[]; email_source?: string | null };
+  enriched: boolean;
+}) {
+  const alternates = (contacts?.emails ?? []).filter((e) => e !== email);
+  return (
+    <div className="rounded-lg border p-3 space-y-1.5">
+      <div className="text-xs font-medium text-muted-foreground">Contact details</div>
+      <div>
+        <span className="text-muted-foreground">Name:</span>{" "}
+        {name || <span className="text-muted-foreground italic">not found</span>}
+      </div>
+      <div>
+        <span className="text-muted-foreground">Email:</span>{" "}
+        {email ? (
+          <a href={`mailto:${email}`} className="hover:underline">{email}</a>
+        ) : (
+          <span className="text-muted-foreground italic">
+            {enriched ? "no public email found on their site" : "run enrichment to find it"}
+          </span>
+        )}
+      </div>
+      {alternates.length > 0 && (
+        <div className="text-xs text-muted-foreground">Other emails: {alternates.join(", ")}</div>
+      )}
+      {contacts?.phones && contacts.phones.length > 0 && (
+        <div className="text-xs text-muted-foreground">Phone: {contacts.phones.join(", ")}</div>
+      )}
+      {contacts?.socials && contacts.socials.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {contacts.socials.map((s) => (
+            <a key={s} href={s} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+              {new URL(s).hostname.replace(/^www\./, "")}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Section({ title, body }: { title: string; body?: string | null }) {
+
   if (!body) return null;
   return (
     <div>

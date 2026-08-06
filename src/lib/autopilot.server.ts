@@ -23,8 +23,11 @@ const EnrichmentSchema = z.object({
   pricing_signals: z.string(),
   funnel_presence: z.string(),
   contact_email: z.string().nullable(),
+  contact_name: z.string().nullable(),
+  company_name: z.string().nullable(),
   pain_points: z.array(z.object({ title: z.string(), description: z.string() })),
 });
+
 
 const SequenceSchema = z.object({
   emails: z.array(
@@ -212,14 +215,19 @@ export async function runAutopilotForUser(userId: string): Promise<AutopilotResu
         continue;
       }
 
+      const { extractContacts } = await import("./contact-extract.server");
+      const contacts = extractContacts({ html, markdown: md, siteDomain: lead.domain });
+
       const { output, usage: enrichUsage } = await generateText({
         model: gateway(EXTRACT_MODEL),
         output: Output.object({ schema: EnrichmentSchema }),
         prompt: `Analyze this business's website and extract structured intel.
+Also identify the contact email, the person behind the business (owner/founder/main contact) and the clean brand name (not the page title). Use null when unknown.
 
 URL: ${lead.website}
-Business: ${lead.business_name ?? "unknown"}
+Page title: ${lead.business_name ?? "unknown"}
 Platform: ${platform ?? "unknown"}
+Emails found in page source: ${contacts.emails.join(", ") || "(none)"}
 
 Content:
 ${md.slice(0, 15000) || "(no content)"}`,
@@ -241,18 +249,36 @@ ${md.slice(0, 15000) || "(no content)"}`,
           funnel_presence: output.funnel_presence,
           pain_points: output.pain_points,
           raw_markdown: md.slice(0, 20000),
-          website_signals: { ...(signals as any), pages_scraped: pagesScraped },
+          website_signals: {
+            ...(signals as any),
+            pages_scraped: pagesScraped,
+            contacts: {
+              emails: contacts.emails,
+              phones: contacts.phones,
+              socials: contacts.socials,
+              email_source: contacts.email_source,
+            },
+          },
         },
         { onConflict: "lead_id" },
       );
 
+      const aiEmail = output.contact_email?.includes("@") ? output.contact_email.trim().toLowerCase() : null;
+      const resolvedEmail = contacts.email ?? aiEmail ?? lead.email ?? null;
 
       await supabaseAdmin
         .from("leads")
-        .update({ status: "enriched", platform, email: output.contact_email ?? lead.email })
+        .update({
+          status: "enriched",
+          platform,
+          email: resolvedEmail,
+          name: output.contact_name?.trim() || lead.name || null,
+          business_name: output.company_name?.trim() || lead.business_name || null,
+        })
         .eq("id", lead.id);
 
-      enrichedLeads.push({ ...lead, platform, enrichment: output, signals });
+      enrichedLeads.push({ ...lead, platform, email: resolvedEmail, enrichment: output, signals });
+
       result.enriched += 1;
     } catch (e) {
       result.errors.push(`enrich ${lead.website}: ${String(e)}`);
