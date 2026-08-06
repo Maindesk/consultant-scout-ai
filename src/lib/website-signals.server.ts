@@ -301,6 +301,8 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
   const has_head = /<head[\s>]/i.test(src) || /<meta\s/i.test(src);
   const html_usable = src.length > 1500 && has_head;
 
+  const visible = visibleMarkup(src);
+
   const capabilities = {} as Record<CapabilityKey, Capability>;
   const setCap = (k: CapabilityKey, c: Capability) => (capabilities[k] = c);
 
@@ -315,15 +317,22 @@ export function detectSignals(html?: string | null): Omit<WebsiteSignals, "perfo
       setCap(key, { state: "unknown", via: null, evidence: "page markup could not be read" });
       continue;
     }
-    const native = (NATIVE_EVIDENCE[key] ?? []).find((n) => n.re.test(src));
-    if (native) {
-      setCap(key, { state: "present", via: null, evidence: `built into their site — ${native.note}` });
+    const rules = NATIVE_EVIDENCE[key] ?? [];
+    const match = (r: NativeRule) => r.re.test(r.scope === "raw" ? src : visible);
+    const strong = rules.find((r) => r.strength === "strong" && match(r));
+    if (strong) {
+      setCap(key, { state: "present", via: null, evidence: `built into their site — ${strong.note}` });
+      continue;
+    }
+    const weak = rules.find((r) => r.strength === "weak" && match(r));
+    if (weak) {
+      setCap(key, { state: "unknown", via: null, evidence: `unconfirmed — ${weak.note}` });
       continue;
     }
     if (SCRIPT_ONLY.includes(key)) {
       setCap(key, { state: "absent", via: null, evidence: "no tracking/CRM script in page source" });
-    } else if (NATIVE_EVIDENCE[key]) {
-      setCap(key, { state: "absent", via: null, evidence: "no widget, markup or on-page copy for it" });
+    } else if (rules.length) {
+      setCap(key, { state: "absent", via: null, evidence: "no widget, link or markup for it on the pages we scanned" });
     } else {
       setCap(key, { state: "unknown", via: null, evidence: "not verifiable from page source" });
     }
