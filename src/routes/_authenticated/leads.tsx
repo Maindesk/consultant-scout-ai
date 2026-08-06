@@ -7,9 +7,10 @@ import {
   provisionDemoSiteForLead,
   getFreshEditLink,
   getDemoSiteForLead,
-  listAvailableTemplates,
   setDemoSiteApproval,
 } from "@/lib/platform.functions";
+import { TemplatePickerDialog, TemplatePickerButton, type PickedTemplate } from "@/components/TemplatePickerDialog";
+
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
