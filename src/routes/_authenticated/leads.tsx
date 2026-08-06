@@ -591,12 +591,34 @@ function ContactPanel({
         <div className="text-xs text-muted-foreground">Phone: {contacts.phones.join(", ")}</div>
       )}
       {contacts?.socials && contacts.socials.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {contacts.socials.map((s) => (
-            <a key={s} href={s} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
-              {new URL(s).hostname.replace(/^www\./, "")}
-            </a>
-          ))}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          {contacts.socials.map((s) => {
+            const host = (() => {
+              try { return new URL(s).hostname.replace(/^www\./, ""); } catch { return s; }
+            })();
+            const Icon = host.includes("linkedin")
+              ? Linkedin
+              : host.includes("instagram")
+                ? Instagram
+                : host.includes("facebook")
+                  ? Facebook
+                  : host.includes("twitter") || host.includes("x.com")
+                    ? Twitter
+                    : Globe;
+            return (
+              <a
+                key={s}
+                href={s}
+                target="_blank"
+                rel="noreferrer"
+                title={host}
+                aria-label={host}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+              >
+                <Icon className="h-3.5 w-3.5" />
+              </a>
+            );
+          })}
         </div>
       )}
     </div>
