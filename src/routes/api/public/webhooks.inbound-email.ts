@@ -29,7 +29,27 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
         } catch {
           return new Response("Invalid JSON", { status: 400 });
         }
-        const parsed = Payload.safeParse(body);
+
+        // Resend Inbound sends { type: "email.received", data: {...} } and does
+        // NOT include the body — it must be fetched via the Resend API after we
+        // know which workspace (and thus which API key) the reply belongs to.
+        let resendEmailId: string | null = null;
+        let normalized: unknown = body;
+        const raw = body as any;
+        if (raw?.type === "email.received" && raw?.data) {
+          const d = raw.data;
+          resendEmailId = d.email_id ?? null;
+          normalized = {
+            from: d.from,
+            to: Array.isArray(d.to) ? d.to[0] : d.to,
+            subject: d.subject ?? "",
+            text: "",
+            in_reply_to: d.headers?.["In-Reply-To"] ?? d.headers?.["in-reply-to"] ?? undefined,
+            message_id: d.message_id ?? undefined,
+          };
+        }
+
+        const parsed = Payload.safeParse(normalized);
         if (!parsed.success) {
           return Response.json({ error: parsed.error.flatten() }, { status: 400 });
         }
