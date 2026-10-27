@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { PricingPlans } from "@/components/PricingPlans";
 import {
   Sparkles,
   Search,
@@ -25,6 +26,10 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "PixelOutreach — Get more users for your white-label" },
+      { property: "og:title", content: "PixelOutreach — Get more users for your white-label" },
+      { property: "og:description", content: "Discover prospects, personalize outreach and create connected demos on your white-label platform." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         name: "description",
         content:
@@ -34,8 +39,6 @@ export const Route = createFileRoute("/")({
   }),
   component: Landing,
 });
-
-const fmt = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
 function Landing() {
   return (
@@ -69,7 +72,7 @@ function Nav() {
           <a href="#how" className="hover:text-foreground transition">How it works</a>
           <a href="#features" className="hover:text-foreground transition">Features</a>
           <a href="#usecases" className="hover:text-foreground transition">Use cases</a>
-          <a href="#pricing" className="hover:text-foreground transition">Pricing</a>
+          <Link to="/pricing" className="hover:text-foreground transition">Pricing</Link>
         </nav>
         <div className="flex items-center gap-2">
           <Link to="/auth" className="hidden sm:inline-flex">
@@ -505,59 +508,13 @@ function Comparison() {
 
 /* ----------------------------- PRICING ----------------------------- */
 function Pricing() {
-  const tiers = [
-    { code: "starter", name: "Starter", price: 49, tagline: "Test the waters", leads: 300, ai: 5000, emails: 1200, overage: "$0.20", features: ["1 workspace", "Autopilot discovery", "AI email drafting", "Unified inbox"] },
-    { code: "growth", name: "Growth", price: 149, tagline: "Most popular", leads: 1200, ai: 20000, emails: 4800, overage: "$0.15", features: ["Everything in Starter", "Auto-provisioned demos", "SSO link injection", "Pipeline forecasting", "Priority support"], featured: true },
-    { code: "scale", name: "Scale", price: 399, tagline: "For serious operators", leads: 3000, ai: 50000, emails: 12000, overage: "$0.12", features: ["Everything in Growth", "Custom integrations", "Dedicated onboarding", "Revenue attribution", "SLA"] },
-  ];
   return (
     <section id="pricing" className="py-24 md:py-32">
-      <div className="max-w-7xl mx-auto px-6">
-        <SectionHeader
-          eyebrow="Pricing"
-          title="Pay for leads worked, not seats."
-          subtitle="7-day free trial on every plan. No credit card. Never hard-stopped — go past your allowance and extra leads simply bill per lead."
-        />
-
-        <div className="mt-16 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {tiers.map((t) => (
-            <div
-              key={t.code}
-              className={`relative rounded-2xl border p-8 flex flex-col ${
-                t.featured
-                  ? "border-primary bg-card shadow-brand md:-translate-y-3"
-                  : "border-border bg-card"
-              }`}
-            >
-              {t.featured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-gradient text-white text-xs font-semibold px-3 py-1 rounded-full">
-                  Most popular
-                </div>
-              )}
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">{t.tagline}</div>
-              <h3 className="mt-1 text-2xl font-bold">{t.name}</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-5xl font-bold tracking-tight">${t.price}</span>
-                <span className="text-muted-foreground">/mo</span>
-              </div>
-              <ul className="mt-6 space-y-2 text-sm">
-                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {fmt(t.leads)} leads/mo</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {fmt(t.ai)} AI credits</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {fmt(t.emails)} emails/mo</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {t.overage} per extra lead after that</li>
-                {t.features.map((f) => (
-                  <li key={f} className="flex gap-2"><Check className="w-4 h-4 text-primary mt-0.5 shrink-0" /> {f}</li>
-                ))}
-              </ul>
-
-              <Link to="/auth" className="mt-8 block">
-                <Button className="w-full" variant={t.featured ? "default" : "outline"} size="lg">
-                  Start free trial
-                </Button>
-              </Link>
-            </div>
-          ))}
-        </div>
+      <div className="max-w-6xl mx-auto px-6">
+        <SectionHeader eyebrow="Pricing" title="Two plans. One white-label growth engine." subtitle="Start with Base at $29/month or grow with Pro at $59/month. All core features included, with no per-demo fee." />
+        <div className="mt-12"><PricingPlans /></div>
+        <p className="mt-7 text-center text-xs text-muted-foreground">New plan preview. Paid checkout and these allowances are not yet activated. Your email provider fees are separate.</p>
+        <div className="mt-5 text-center"><Button asChild variant="link"><Link to="/pricing">Compare plans and see what's included <ArrowRight /></Link></Button></div>
       </div>
     </section>
   );
@@ -638,7 +595,7 @@ function Footer() {
         </div>
         <div className="flex gap-6">
           <a href="#features" className="hover:text-foreground">Features</a>
-          <a href="#pricing" className="hover:text-foreground">Pricing</a>
+          <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
           <Link to="/auth" className="hover:text-foreground">Sign in</Link>
         </div>
       </div>
