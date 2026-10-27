@@ -155,3 +155,30 @@ export const runDomainHealthCheck = createServerFn({ method: "POST" })
       .eq("id", data.workspace_id);
     return health;
   });
+
+export const getEmailBranding = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { data: ws } = await context.supabase
+      .from("workspaces").select("email_branding").eq("id", data.workspace_id).maybeSingle();
+    return ((ws as any)?.email_branding ?? {}) as import("./email-branding").EmailBranding;
+  });
+
+export const saveEmailBranding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string; branding: import("./email-branding").EmailBranding }) => d)
+  .handler(async ({ context, data }) => {
+    await assertWorkspaceAdmin(context.supabase, context.userId, data.workspace_id);
+    const b = data.branding ?? {};
+    const clip = (s: unknown, n = 200) => (typeof s === "string" ? s.slice(0, n) : undefined);
+    const clean = {
+      sig_name: clip(b.sig_name), sig_title: clip(b.sig_title), logo_url: clip(b.logo_url, 2000),
+      logo_width: Number(b.logo_width) || 140, website: clip(b.website), email: clip(b.email),
+      phone: clip(b.phone, 50), button_label: clip(b.button_label, 60), button_color: clip(b.button_color, 9),
+    };
+    const { error } = await context.supabase
+      .from("workspaces").update({ email_branding: clean } as never).eq("id", data.workspace_id);
+    if (error) throw error;
+    return { ok: true };
+  });
