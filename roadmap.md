@@ -1,5 +1,8 @@
 # Roadmap
 
+## Signature logo upload
+- [ ] Fix workspace-scoped logo upload permissions and verify upload, preview, and saved design.
+
 ## Email sender setup (Resend — outreach.maindesk.io)
 - [x] Subdomain added and verified in Resend
 - [x] Reply webhook adapter for Resend `email.received` events (fetches body via Resend API)
