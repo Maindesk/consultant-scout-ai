@@ -112,11 +112,19 @@ export const testEmailSender = createServerFn({ method: "POST" })
     const to = (data.to ?? "").trim() || context.claims.email;
     if (!to) return { ok: false, message: "No recipient" };
     try {
+      const { data: ws } = await context.supabase
+        .from("workspaces").select("email_branding").eq("id", data.workspace_id).maybeSingle();
+      const { renderBrandedEmail } = await import("./email-branding");
+      const r = renderBrandedEmail(
+        "Hi there,\n\nThis is a test email from PixelOutreach confirming your sender is connected and showing your email design.\n\n{{DEMO_LINK}}\n\nBest,",
+        ((ws as any)?.email_branding ?? null),
+        "https://example.com/demo-preview",
+      );
       const result = await sendWithWorkspaceProvider(data.workspace_id, {
         to,
         subject: "PixelOutreach — sender test",
-        text: "This is a test email from PixelOutreach confirming your sender is connected.",
-        html: `<p>This is a test email from <strong>PixelOutreach</strong> confirming your sender is connected.</p><p style="color:#666;font-size:12px">Provider: ${cfg.provider}</p>`,
+        text: r.text,
+        html: r.html,
       });
       return { ok: true, message: `Sent to ${to} (id ${result.message_id})` };
     } catch (e) {
