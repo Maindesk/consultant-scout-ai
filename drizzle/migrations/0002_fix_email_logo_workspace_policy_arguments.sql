@@ -1,0 +1,3 @@
+ALTER POLICY "Members read email logos" ON storage.objects TO authenticated USING (bucket_id = 'email-logos' AND public.is_workspace_member(auth.uid(), ((storage.foldername(name))[1])::uuid));
+ALTER POLICY "Members upload email logos" ON storage.objects TO authenticated WITH CHECK (bucket_id = 'email-logos' AND public.is_workspace_member(auth.uid(), ((storage.foldername(name))[1])::uuid));
+ALTER POLICY "Members update email logos" ON storage.objects TO authenticated USING (bucket_id = 'email-logos' AND public.is_workspace_member(auth.uid(), ((storage.foldername(name))[1])::uuid)) WITH CHECK (bucket_id = 'email-logos' AND public.is_workspace_member(auth.uid(), ((storage.foldername(name))[1])::uuid));
