@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep the public pricing offer in `src/lib/pricing.ts` and reuse `PricingPlans` on marketing pages so plan displays stay consistent; public offers do not replace enforced billing quotas.
+- Load AI SDKs, AI output schemas, and server-only integrations inside `createServerFn` handlers rather than at module scope in client-imported function files; this prevents server dependency cycles from crashing page initialization.

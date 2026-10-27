@@ -1,9 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output } from "ai";
-import { z } from "zod";
-import { getLovableGateway, WRITE_MODEL } from "./ai-gateway.server";
-import { getFirecrawl } from "./firecrawl.server";
+
 
 export const getBusinessProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -108,6 +105,7 @@ export const deleteBusinessSource = createServerFn({ method: "POST" })
   });
 
 async function scrapeMarkdown(url: string): Promise<string> {
+  const { getFirecrawl } = await import("./firecrawl.server");
   try {
     const fc = getFirecrawl();
     const res: any = await fc.scrape(url, { formats: ["markdown"], onlyMainContent: true });
@@ -125,6 +123,9 @@ async function scrapeMarkdown(url: string): Promise<string> {
 export const analyzeMyBusiness = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    const { generateText, Output } = await import("ai");
+    const { z } = await import("zod");
+    const { getLovableGateway, WRITE_MODEL } = await import("./ai-gateway.server");
     const { data: profile, error: pErr } = await context.supabase
       .from("business_profiles")
       .select("*")

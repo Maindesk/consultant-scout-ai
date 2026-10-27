@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output, NoObjectGeneratedError } from "ai";
-import { z } from "zod";
-import { getLovableGateway, WRITE_MODEL } from "./ai-gateway.server";
+import type { z } from "zod";
 
 function extractJson(text: string): unknown {
   const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
@@ -13,17 +11,6 @@ function extractJson(text: string): unknown {
 }
 
 const DAY_OFFSETS = [0, 3, 7, 14];
-const SequenceSchema = z.object({
-  emails: z.array(
-    z.object({
-      step_number: z.number(),
-      day_offset: z.number(),
-      subject: z.string(),
-      body: z.string(),
-    }),
-  ),
-});
-
 function normalizeEmails(parsed: unknown): unknown {
   const emails = Array.isArray(parsed)
     ? parsed
@@ -57,6 +44,19 @@ export const draftEmailsForLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { lead_id: string; tone?: string; goal?: string }) => d)
   .handler(async ({ context, data }) => {
+    const { generateText, Output, NoObjectGeneratedError } = await import("ai");
+    const { z } = await import("zod");
+    const { getLovableGateway, WRITE_MODEL } = await import("./ai-gateway.server");
+    const SequenceSchema = z.object({
+      emails: z.array(
+        z.object({
+          step_number: z.number(),
+          day_offset: z.number(),
+          subject: z.string(),
+          body: z.string(),
+        }),
+      ),
+    });
     const [{ data: lead }, { data: enrichment }, { data: bp }] = await Promise.all([
       context.supabase.from("leads").select("*").eq("id", data.lead_id).eq("user_id", context.userId).single(),
       context.supabase.from("lead_enrichments").select("*").eq("lead_id", data.lead_id).maybeSingle(),

@@ -1,11 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output, NoObjectGeneratedError } from "ai";
-import { z } from "zod";
-import { getFirecrawl, extractDomain } from "./firecrawl.server";
-import { getLovableGateway, EXTRACT_MODEL } from "./ai-gateway.server";
-import { detectPlatform, detectPlatformDetailed } from "./platform-detect.server";
-import { isJunkLead, buildPractitionerQueries } from "./lead-filters.server";
+import type { z } from "zod";
 import type { PlatformName } from "./platforms";
 import { PIPELINE_STAGES, isLeadStage, type LeadStage } from "./pipeline";
 
@@ -43,6 +38,9 @@ export const discoverLeads = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { search_config_id: string; limit?: number }) => d)
   .handler(async ({ context, data }) => {
+    const { getFirecrawl, extractDomain } = await import("./firecrawl.server");
+    const { detectPlatformDetailed } = await import("./platform-detect.server");
+    const { isJunkLead, buildPractitionerQueries } = await import("./lead-filters.server");
     const { data: cfg, error: cErr } = await context.supabase
       .from("search_configs")
       .select("*")
@@ -182,25 +180,27 @@ export const discoverLeads = createServerFn({ method: "POST" })
   });
 
 
-const EnrichmentSchema = z.object({
-  business_summary: z.string(),
-  offer: z.string(),
-  target_audience: z.string(),
-  pricing_signals: z.string(),
-  funnel_presence: z.string(),
-  contact_email: z.string().nullable(),
-  /** The person behind the business (owner/founder/main contact), if named. */
-  contact_name: z.string().nullable(),
-  /** Clean brand/company name (not the page title). */
-  company_name: z.string().nullable(),
-  pain_points: z.array(z.object({ title: z.string(), description: z.string() })),
-});
-
-
 export const enrichLead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { lead_id: string }) => d)
   .handler(async ({ context, data }) => {
+    const { generateText, Output, NoObjectGeneratedError } = await import("ai");
+    const { z } = await import("zod");
+    const { getLovableGateway, EXTRACT_MODEL } = await import("./ai-gateway.server");
+    const { detectPlatformDetailed } = await import("./platform-detect.server");
+    const EnrichmentSchema = z.object({
+      business_summary: z.string(),
+      offer: z.string(),
+      target_audience: z.string(),
+      pricing_signals: z.string(),
+      funnel_presence: z.string(),
+      contact_email: z.string().nullable(),
+      /** The person behind the business (owner/founder/main contact), if named. */
+      contact_name: z.string().nullable(),
+      /** Clean brand/company name (not the page title). */
+      company_name: z.string().nullable(),
+      pain_points: z.array(z.object({ title: z.string(), description: z.string() })),
+    });
     const { data: lead, error } = await context.supabase
       .from("leads")
       .select("*")

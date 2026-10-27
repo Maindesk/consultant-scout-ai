@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateText, Output, NoObjectGeneratedError } from "ai";
-import { z } from "zod";
-import { getLovableGateway, WRITE_MODEL } from "./ai-gateway.server";
+
 
 export const listSearchConfigs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -68,14 +66,6 @@ export const deleteSearchConfig = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const AudienceSchema = z.object({
-  suggested_name: z.string(),
-  niches: z.array(z.string()),
-  locations: z.array(z.string()),
-  keywords: z.array(z.string()),
-  search_intents: z.array(z.string()),
-});
-
 export const expandAudience = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { description: string }) => {
@@ -85,6 +75,16 @@ export const expandAudience = createServerFn({ method: "POST" })
     return d;
   })
   .handler(async ({ data }) => {
+    const { generateText, Output, NoObjectGeneratedError } = await import("ai");
+    const { z } = await import("zod");
+    const { getLovableGateway, WRITE_MODEL } = await import("./ai-gateway.server");
+    const AudienceSchema = z.object({
+      suggested_name: z.string(),
+      niches: z.array(z.string()),
+      locations: z.array(z.string()),
+      keywords: z.array(z.string()),
+      search_intents: z.array(z.string()),
+    });
     const gateway = getLovableGateway();
     const prompt = `You turn a plain-English description of an ideal outbound prospect into a structured search config used to Google their websites.
 
