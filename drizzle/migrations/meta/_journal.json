@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793129735090,
+      "tag": "0000_email_branding",
+      "breakpoints": true
+    }
+  ]
+}
