@@ -542,7 +542,7 @@ Control (you approve everything)
 
 This project was built with [Lovable](https://lovable.dev).
 
-**Live app**: https://consultant-scout-ai.lovable.app
+**Live app**: https://pixel-outreach.lovable.app
 
 ## Build with Lovable
 
