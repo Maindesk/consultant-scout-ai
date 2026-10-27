@@ -89,6 +89,35 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
           return Response.json({ status: "unmatched" });
         }
 
+        // Resend Inbound: fetch the actual reply body using the workspace's key.
+        if (resendEmailId && !msg.text && !msg.html) {
+          try {
+            const { data: bp } = await supabaseAdmin
+              .from("business_profiles")
+              .select("active_workspace_id")
+              .eq("user_id", lead.user_id)
+              .maybeSingle();
+            if (bp?.active_workspace_id) {
+              const { loadWorkspaceSender } = await import("@/lib/email-provider.server");
+              const sender = await loadWorkspaceSender(bp.active_workspace_id);
+              if (sender?.provider === "resend") {
+                const r = await fetch(`https://api.resend.com/emails/receiving/${resendEmailId}`, {
+                  headers: { Authorization: `Bearer ${sender.api_key}` },
+                });
+                if (r.ok) {
+                  const full: any = await r.json();
+                  msg.text = full?.text ?? "";
+                  msg.html = full?.html ?? undefined;
+                } else {
+                  console.error("Resend receiving fetch failed", r.status, await r.text().catch(() => ""));
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Resend body fetch failed", e);
+          }
+        }
+
         // Classify + suggest reply
         const { classifyAndSuggest } = await import("@/lib/reply-ai.server");
         let classification = "unknown";
