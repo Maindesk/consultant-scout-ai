@@ -112,11 +112,19 @@ export const testEmailSender = createServerFn({ method: "POST" })
     const to = (data.to ?? "").trim() || context.claims.email;
     if (!to) return { ok: false, message: "No recipient" };
     try {
+      const { data: ws } = await context.supabase
+        .from("workspaces").select("email_branding").eq("id", data.workspace_id).maybeSingle();
+      const { renderBrandedEmail } = await import("./email-branding");
+      const r = renderBrandedEmail(
+        "Hi there,\n\nThis is a test email from PixelOutreach confirming your sender is connected and showing your email design.\n\n{{DEMO_LINK}}\n\nBest,",
+        ((ws as any)?.email_branding ?? null),
+        "https://example.com/demo-preview",
+      );
       const result = await sendWithWorkspaceProvider(data.workspace_id, {
         to,
         subject: "PixelOutreach — sender test",
-        text: "This is a test email from PixelOutreach confirming your sender is connected.",
-        html: `<p>This is a test email from <strong>PixelOutreach</strong> confirming your sender is connected.</p><p style="color:#666;font-size:12px">Provider: ${cfg.provider}</p>`,
+        text: r.text,
+        html: r.html,
       });
       return { ok: true, message: `Sent to ${to} (id ${result.message_id})` };
     } catch (e) {
@@ -146,4 +154,31 @@ export const runDomainHealthCheck = createServerFn({ method: "POST" })
       } as never)
       .eq("id", data.workspace_id);
     return health;
+  });
+
+export const getEmailBranding = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string }) => d)
+  .handler(async ({ context, data }) => {
+    const { data: ws } = await context.supabase
+      .from("workspaces").select("email_branding").eq("id", data.workspace_id).maybeSingle();
+    return ((ws as any)?.email_branding ?? {}) as import("./email-branding").EmailBranding;
+  });
+
+export const saveEmailBranding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { workspace_id: string; branding: import("./email-branding").EmailBranding }) => d)
+  .handler(async ({ context, data }) => {
+    await assertWorkspaceAdmin(context.supabase, context.userId, data.workspace_id);
+    const b = data.branding ?? {};
+    const clip = (s: unknown, n = 200) => (typeof s === "string" ? s.slice(0, n) : undefined);
+    const clean = {
+      sig_name: clip(b.sig_name), sig_title: clip(b.sig_title), logo_url: clip(b.logo_url, 2000),
+      logo_width: Number(b.logo_width) || 140, website: clip(b.website), email: clip(b.email),
+      phone: clip(b.phone, 50), button_label: clip(b.button_label, 60), button_color: clip(b.button_color, 9),
+    };
+    const { error } = await context.supabase
+      .from("workspaces").update({ email_branding: clean } as never).eq("id", data.workspace_id);
+    if (error) throw error;
+    return { ok: true };
   });

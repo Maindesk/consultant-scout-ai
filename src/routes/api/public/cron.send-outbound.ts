@@ -95,6 +95,7 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
             // the lead's personalized demo site (auto-provisions if none exists).
             const subject = draft.subject as string;
             let bodyText = draft.body as string;
+            let demoUrl: string | null = null;
 
             if (draft.step_number === 3) {
               const { data: settings } = await supabaseAdmin
@@ -104,18 +105,14 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
                 .maybeSingle();
               if (settings?.auto_insert_sso_in_email3) {
                 try {
-                  const demoUrl = await ensureDemoSiteAndSsoLink({
+                  demoUrl = await ensureDemoSiteAndSsoLink({
                     userId: item.user_id,
                     workspaceId,
                     leadId: item.lead_id,
                     autoProvision: !!settings.auto_provision_demo,
                   });
-                  if (demoUrl) {
-                    if (bodyText.includes("{{DEMO_LINK}}")) {
-                      bodyText = bodyText.replaceAll("{{DEMO_LINK}}", demoUrl);
-                    } else {
-                      bodyText = `${bodyText}\n\nP.S. I put together a personalized preview of what your site could look like on our platform — one-click edit (link expires in 15 min): ${demoUrl}`;
-                    }
+                  if (demoUrl && !bodyText.includes("{{DEMO_LINK}}")) {
+                    bodyText = `${bodyText}\n\nP.S. I put together a personalized preview of what your site could look like on our platform (link expires in 15 min):\n\n{{DEMO_LINK}}`;
                   }
                 } catch (e) {
                   console.error("SSO injection failed", e);
@@ -123,11 +120,21 @@ export const Route = createFileRoute("/api/public/cron/send-outbound")({
               }
             }
 
+            const { data: wsB } = await supabaseAdmin
+              .from("workspaces")
+              .select("email_branding")
+              .eq("id", workspaceId)
+              .maybeSingle();
+            const { renderBrandedEmail } = await import("@/lib/email-branding");
+            const rendered = renderBrandedEmail(bodyText, (wsB as any)?.email_branding ?? null, demoUrl);
+            bodyText = rendered.text;
+            void textToHtml;
+
             const { message_id } = await sendWithWorkspaceProvider(workspaceId, {
               to: lead.email,
               subject,
-              html: textToHtml(bodyText),
-              text: bodyText,
+              html: rendered.html,
+              text: rendered.text,
               reply_to: fromEmail,
               headers: {
                 "X-PixelOutreach-Template": "cold-outreach",

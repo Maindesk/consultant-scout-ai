@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { EmailDesignCard } from "@/components/EmailDesignCard";
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -81,6 +82,7 @@ function SettingsPage() {
       )}
       {active && <UsageCard />}
       {active && <EmailSenderCard workspace={active} />}
+      {active && <EmailDesignCard workspaceId={active.id} />}
       {active && <WorkspaceIntegrationsCard workspace={active} />}
     </div>
   );
