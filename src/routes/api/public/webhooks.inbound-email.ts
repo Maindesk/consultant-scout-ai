@@ -23,11 +23,34 @@ export const Route = createFileRoute("/api/public/webhooks/inbound-email")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const rawBody = await request.text();
         let body: unknown;
         try {
-          body = await request.json();
+          body = JSON.parse(rawBody);
         } catch {
           return new Response("Invalid JSON", { status: 400 });
+        }
+
+        // Verify the Resend (Svix) webhook signature when the signing secret
+        // is configured. Unverified requests are rejected so nobody can forge
+        // a fake "reply" into the inbox.
+        const signingSecret = process.env["RESEND_WEBHOOK_SIGNING_SECRET"];
+        if (signingSecret) {
+          const { Webhook } = await import("standardwebhooks");
+          const wh = new Webhook(signingSecret);
+          const headers: Record<string, string> = {};
+          for (const h of ["svix-id", "svix-timestamp", "svix-signature"]) {
+            const v = request.headers.get(h);
+            if (v) headers[h] = v;
+          }
+          try {
+            wh.verify(rawBody, headers);
+          } catch (e) {
+            console.error("Inbound email webhook: signature verification failed", e instanceof Error ? e.message : e);
+            return new Response("Invalid signature", { status: 401 });
+          }
+        } else {
+          console.warn("Inbound email webhook: RESEND_WEBHOOK_SIGNING_SECRET not set — accepting unsigned request");
         }
 
         // Resend Inbound sends { type: "email.received", data: {...} } and does
