@@ -1,35 +1,31 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getMyBilling, listPlans, changeMyPlan, cancelMyPlan } from "@/lib/billing.functions";
+import { getMyBilling, cancelMyPlan } from "@/lib/billing.functions";
+import { PricingPlans } from "@/components/PricingPlans";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/billing")({
+  head: () => ({ meta: [
+    { title: "Billing & usage | PixelOutreach" },
+    { name: "description", content: "Review your PixelOutreach usage and the Base and Pro plans for growing your white-label." },
+    { property: "og:title", content: "Billing & usage | PixelOutreach" },
+    { property: "og:description", content: "Manage your white-label outreach subscription and monthly usage." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: BillingPage,
 });
 
 function BillingPage() {
   const qc = useQueryClient();
   const billFn = useServerFn(getMyBilling);
-  const plansFn = useServerFn(listPlans);
-  const changeFn = useServerFn(changeMyPlan);
   const cancelFn = useServerFn(cancelMyPlan);
 
-  const { data: billing } = useQuery({ queryKey: ["billing"], queryFn: () => billFn() });
-  const { data: planList = [] } = useQuery({ queryKey: ["plans"], queryFn: () => plansFn() });
-
-  const changeMut = useMutation({
-    mutationFn: (plan_code: string) => changeFn({ data: { plan_code } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["billing"] });
-      toast.success("Plan updated");
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
-  });
+  const { data: billing, isPending, error } = useQuery({ queryKey: ["billing"], queryFn: () => billFn() });
 
   const cancelMut = useMutation({
     mutationFn: () => cancelFn(),
@@ -40,7 +36,9 @@ function BillingPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed"),
   });
 
-  if (!billing) return <div className="p-8 text-sm text-muted-foreground">Loading billing…</div>;
+  if (isPending) return <div className="p-8 text-sm text-muted-foreground">Loading billing…</div>;
+  if (error) return <div className="p-8 text-sm text-destructive">{error instanceof Error ? error.message : "Unable to load billing. Please try again."}</div>;
+  if (!billing) return <div className="p-8 text-sm text-muted-foreground">Create your workspace to view billing.</div>;
 
   const sub = billing.subscription;
   const plan = sub.plan;
@@ -102,42 +100,9 @@ function BillingPage() {
 
       <div>
         <h2 className="text-lg font-semibold mb-3">Available plans</h2>
-        <div className="grid md:grid-cols-4 gap-4">
-          {planList
-            .filter((p) => p.code !== "trial")
-            .map((p) => {
-              const isCurrent = p.code === plan.code;
-              return (
-                <Card key={p.id} className={isCurrent ? "border-primary" : ""}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{p.name}</CardTitle>
-                    <CardDescription>
-                      <span className="text-2xl font-bold text-foreground">${p.price_usd_monthly}</span>
-                      <span className="text-xs">/mo</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <Feat>{p.leads_monthly.toLocaleString()} leads / mo</Feat>
-                    <Feat>{p.ai_credits_monthly.toLocaleString()} AI credits</Feat>
-                    <Feat>{p.emails_monthly.toLocaleString()} emails / mo</Feat>
-                    <Feat>${((p.overage_price_cents_per_lead ?? 0) / 100).toFixed(2)} per extra lead</Feat>
-
-                    <Button
-                      className="w-full mt-3"
-                      disabled={isCurrent || changeMut.isPending}
-                      onClick={() => changeMut.mutate(p.code)}
-                      variant={isCurrent ? "outline" : "default"}
-                    >
-                      {isCurrent ? "Current plan" : "Switch to this plan"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
-        </div>
+        <PricingPlans renderAction={() => <Button disabled variant="outline" size="lg" className="w-full h-11">Checkout not available yet</Button>} />
         <p className="text-xs text-muted-foreground mt-4">
-          Payments provider isn't wired yet — plan switches take effect immediately for testing. Once billing is
-          connected, plan changes will route through a Stripe or Paddle checkout.
+          Base and Pro are the new paid offers. Checkout is not connected yet; your current subscription and enforced usage limits remain unchanged.
         </p>
       </div>
     </div>
@@ -160,10 +125,3 @@ function UsageBlock({ label, used, limit }: { label: string; used: number; limit
   );
 }
 
-function Feat({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2">
-      <Check className="w-3.5 h-3.5 text-green-600" /> {children}
-    </div>
-  );
-}

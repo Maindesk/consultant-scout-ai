@@ -9,5 +9,5 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
-- Keep the public pricing offer in `src/lib/pricing.ts` and reuse `PricingPlans` on marketing pages so plan displays stay consistent; public offers do not replace enforced billing quotas.
+- Keep the public pricing offer in `src/lib/pricing.ts` and reuse `PricingPlans` on marketing and Billing pages so plan displays stay consistent; accept a custom action renderer for Billing, and do not present public offers as enforced quotas or enable unconnected checkout.
 - Load AI SDKs, AI output schemas, and server-only integrations inside `createServerFn` handlers rather than at module scope in client-imported function files; this prevents server dependency cycles from crashing page initialization.

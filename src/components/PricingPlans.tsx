@@ -1,9 +1,10 @@
 import { Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { ArrowRight, Check, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { pricingPlans } from "@/lib/pricing";
 
-export function PricingPlans() {
+export function PricingPlans({ renderAction }: { renderAction?: (plan: (typeof pricingPlans)[number]) => ReactNode }) {
   return (
     <div className="grid gap-6 md:grid-cols-2 max-w-4xl mx-auto text-left">
       {pricingPlans.map((plan, index) => (
@@ -14,7 +15,7 @@ export function PricingPlans() {
           </div>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground min-h-10">{plan.description}</p>
           <div className="my-7 flex items-baseline gap-2"><span className="text-5xl font-semibold">${plan.price}</span><span className="text-sm text-muted-foreground">USD / month</span></div>
-          <Button asChild variant={index === 1 ? "default" : "outline"} size="lg" className="w-full h-11"><Link to="/auth">Get started with {plan.name}<ArrowRight /></Link></Button>
+          {renderAction ? renderAction(plan) : <Button asChild variant={index === 1 ? "default" : "outline"} size="lg" className="w-full h-11"><Link to="/auth">Get started with {plan.name}<ArrowRight /></Link></Button>}
           <div className="mt-7 border-t border-border pt-6">
             <p className="text-xs font-medium text-muted-foreground mb-4">YOUR MONTHLY ALLOWANCE</p>
             <ul className="space-y-4 text-sm">
