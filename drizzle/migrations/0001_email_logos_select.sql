@@ -1,0 +1,2 @@
+CREATE POLICY "Members read email logos" ON storage.objects FOR SELECT TO authenticated
+  USING (bucket_id = 'email-logos' AND public.is_workspace_member(((storage.foldername(name))[1])::uuid, auth.uid()));
